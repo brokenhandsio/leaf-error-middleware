@@ -48,6 +48,9 @@ You need to include two [Leaf](https://github.com/vapor/leaf) templates in your 
 * `404.leaf`
 * `serverError.leaf`
 
-When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template.
+When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed two parameters:
+
+* `status` - the status code of the error caught
+* `statusMessage` - a reason for the status code
 
 The actual error will also be logged out to the `Droplet`s log.
