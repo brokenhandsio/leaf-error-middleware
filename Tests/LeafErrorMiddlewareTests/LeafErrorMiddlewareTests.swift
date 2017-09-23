@@ -17,16 +17,16 @@ class LeafErrorMiddlewareTests: XCTestCase {
     
     // MARK: - Properties
     var drop: Droplet!
-    var viewRenderer: ConfigurableViewRenderer!
+    var viewRenderer: ThrowingViewRenderer!
     var logger: CapturingLogger!
     
     // MARK: - Overrides
     override func setUp() {
         var config = Config([:])
-        viewRenderer = ConfigurableViewRenderer()
+        viewRenderer = ThrowingViewRenderer()
         logger = CapturingLogger()
         config.addConfigurable(middleware: LeafErrorMiddleware.init, name: "leaf-error")
-        config.addConfigurable(view: { (_) -> (ConfigurableViewRenderer) in
+        config.addConfigurable(view: { (_) -> (ThrowingViewRenderer) in
             return self.viewRenderer
         }, name: "configurable")
         config.addConfigurable(log: { (_) -> (CapturingLogger) in
@@ -104,34 +104,4 @@ class LeafErrorMiddlewareTests: XCTestCase {
         XCTAssertEqual(response.status, .internalServerError)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
-    
-    class ConfigurableViewRenderer: ViewRenderer {
-        
-        var shouldCache = false
-        var shouldThrow = false
-        
-        private(set) var capturedContext: Node? = nil
-        private(set) var leafPath: String? = nil
-        func make(_ path: String, _ context: Node) throws -> View {
-            if shouldThrow {
-                throw TestError()
-            }
-            self.capturedContext = context
-            self.leafPath = path
-            return View(data: "Test".makeBytes())
-        }
-    }
-    
-    class CapturingLogger: LogProtocol {
-        var enabled: [LogLevel] = []
-        
-        private(set) var message: String?
-        private(set) var logLevel: LogLevel?
-        func log(_ level: LogLevel, message: String, file: String, function: String, line: Int) {
-            self.message = message
-            self.logLevel = level
-        }
-    }
-    
-    struct TestError: Error {}
 }

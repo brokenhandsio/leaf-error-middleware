@@ -1,0 +1,1 @@
+struct TestError: Error {}
