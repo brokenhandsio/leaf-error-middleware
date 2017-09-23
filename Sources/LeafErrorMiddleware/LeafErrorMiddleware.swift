@@ -31,8 +31,12 @@ public final class LeafErrorMiddleware: Middleware {
         }
         
         do {
-            let response = try viewRenderer.make("serverError").makeResponse()
-            response.status = .internalServerError
+            let parameters: [String: NodeRepresentable] = [
+                "status": status.statusCode.description,
+                "statusMessage": status.reasonPhrase
+            ]
+            let response = try viewRenderer.make("serverError", parameters).makeResponse()
+            response.status = status
             return response
         } catch {
             let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"

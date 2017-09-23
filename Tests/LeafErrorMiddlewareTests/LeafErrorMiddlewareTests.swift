@@ -13,6 +13,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testThatErrorGetsLogged", testThatErrorGetsLogged),
         ("testThatMiddlewareFallsBackIfViewRendererFails", testThatMiddlewareFallsBackIfViewRendererFails),
         ("testThatRandomErrorGetsReturnedAsServerError", testThatRandomErrorGetsReturnedAsServerError),
+        ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
     ]
     
     // MARK: - Properties
@@ -48,6 +49,10 @@ class LeafErrorMiddlewareTests: XCTestCase {
         
         drop.get("unknownError") { req in
             throw TestError()
+        }
+        
+        drop.get("unauthorized") { req in
+            throw Abort.unauthorized
         }
     }
     
@@ -103,5 +108,14 @@ class LeafErrorMiddlewareTests: XCTestCase {
         
         XCTAssertEqual(response.status, .internalServerError)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
+    }
+    
+    func testThatUnauthorisedIsPassedThroughToServerErrorPage() throws {
+        let response = try drop.respond(to: Request(method: .get, uri: "/unauthorized"))
+        
+        XCTAssertEqual(response.status, .unauthorized)
+        XCTAssertEqual(viewRenderer.leafPath, "serverError")
+        XCTAssertEqual(viewRenderer.capturedContext?["status"]?.string, "401")
+        XCTAssertEqual(viewRenderer.capturedContext?["statusMessage"]?.string, "Unauthorized")
     }
 }
