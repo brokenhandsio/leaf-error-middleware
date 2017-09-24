@@ -12,6 +12,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testThatRequestingPageThatCausesAServerErrorReturnsServerErrorView", testThatRequestingPageThatCausesAServerErrorReturnsServerErrorView),
         ("testThatErrorGetsLogged", testThatErrorGetsLogged),
         ("testThatMiddlewareFallsBackIfViewRendererFails", testThatMiddlewareFallsBackIfViewRendererFails),
+        ("testThatMiddlewareFallsBackIfViewRendererFailsFor404", testThatMiddlewareFallsBackIfViewRendererFailsFor404),
         ("testThatRandomErrorGetsReturnedAsServerError", testThatRandomErrorGetsReturnedAsServerError),
         ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
     ]
@@ -63,8 +64,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
             let linuxCount = thisClass.allTests.count
             let darwinCount = Int(thisClass
                 .defaultTestSuite.testCaseCount)
-            XCTAssertEqual(linuxCount, darwinCount,
-                           "\(darwinCount - linuxCount) tests are missing from allTests")
+            XCTAssertEqual(linuxCount, darwinCount, "\(darwinCount - linuxCount) tests are missing from allTests")
         #endif
     }
     
@@ -100,6 +100,14 @@ class LeafErrorMiddlewareTests: XCTestCase {
         let response = try drop.respond(to: Request(method: .get, uri: "/serverError"))
         
         XCTAssertEqual(response.status, .internalServerError)
+        XCTAssertEqual(response.body.bytes?.makeString(), "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+    }
+    
+    func testThatMiddlewareFallsBackIfViewRendererFailsFor404() throws {
+        viewRenderer.shouldThrow = true
+        let response = try drop.respond(to: Request(method: .get, uri: "/unknown"))
+        
+        XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(response.body.bytes?.makeString(), "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
     }
     
