@@ -7,7 +7,7 @@
 
 Leaf Error Middleware is a piece of middleware for [Vapor](https://github.com/vapor/vapor) which allows you to return custom 404 and server error pages. It supports both Swift 3 and Swift 4.
 
-Note that this middleware is designed to be used for Leaf front-end websites only - it should not be used for providing JSON error responses for an API, for example. 
+Note that this middleware is designed to be used for Leaf front-end websites only - it should not be used for providing JSON error responses for an API, for example.
 
 # Usage
 
@@ -39,7 +39,7 @@ You will need to add it as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     ...,
-    .package(url: "https://github.com/brokenhandsio/VaporSecurityHeaders", from: "1.1.0")
+    .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "0.1.0")
 ]
 ```
 
