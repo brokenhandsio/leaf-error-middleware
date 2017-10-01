@@ -1,9 +1,20 @@
-# Leaf Error Middleware
-
-[![Language](https://img.shields.io/badge/Swift-4-brightgreen.svg)](https://swift.org)
-[![Build Status](https://travis-ci.org/brokenhandsio/leaf-error-middleware.svg?branch=master)](https://travis-ci.org/brokenhandsio/leaf-error-middleware)
-[![Code Coverage](https://codecov.io/gh/brokenhandsio/leaf-error-middleware/branch/master/graph/badge.svg)](https://codecov.io/gh/brokenhandsio/leaf-error-middleware)
-[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/brokenhandsio/leaf-error-middleware/master/LICENSE)
+<p align="center">
+    <img src="https://user-images.githubusercontent.com/9938337/31054113-7cac93d8-a6a3-11e7-84ae-e98c57129a72.png" alt="Leaf Error Middleware">
+    <br>
+    <br>
+    <a href="https://swift.org">
+        <img src="http://img.shields.io/badge/Swift-4-brightgreen.svg" alt="Language">
+    </a>
+    <a href="https://travis-ci.org/brokenhandsio/leaf-error-middleware">
+        <img src="https://travis-ci.org/brokenhandsio/leaf-error-middleware.svg?branch=master" alt="Build Status">
+    </a>
+    <a href="https://codecov.io/gh/brokenhandsio/leaf-error-middleware">
+        <img src="https://codecov.io/gh/brokenhandsio/leaf-error-middleware/branch/master/graph/badge.svg" alt="Code Coverage">
+    </a>
+    <a href="https://raw.githubusercontent.com/brokenhandsio/leaf-error-middleware/master/LICENSE">
+        <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
+    </a>
+</p>
 
 Leaf Error Middleware is a piece of middleware for [Vapor](https://github.com/vapor/vapor) which allows you to return custom 404 and server error pages. It supports both Swift 3 and Swift 4.
 
