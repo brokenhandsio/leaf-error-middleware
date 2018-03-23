@@ -13,7 +13,6 @@ public final class LeafErrorMiddleware: Middleware {
 
     public func respond(to request: Request, chainingTo next: Responder) throws -> EventLoopFuture<Response> {
         do {
-            log.debug("\(#file) \(#function) \(#line)")
             return try next.respond(to: request)
         } catch {
             log.reportError(error, as: "Error")
