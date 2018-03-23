@@ -1,61 +1,63 @@
 import Vapor
-import HTTP
 
 public final class LeafErrorMiddleware: Middleware {
-    let log: LogProtocol
+    let log: Logger
     let environment: Environment
-    let viewRenderer: ViewRenderer
-    public init(environment: Environment, log: LogProtocol, viewRenderer: ViewRenderer) {
+    let renderer: TemplateRenderer
+
+    public init(environment: Environment, log: Logger, renderer: TemplateRenderer) {
         self.log = log
         self.environment = environment
-        self.viewRenderer = viewRenderer
+        self.renderer = renderer
     }
 
-    public func respond(to req: Request, chainingTo next: Responder) throws -> Response {
+    public func respond(to request: Request, chainingTo next: Responder) throws -> EventLoopFuture<Response> {
         do {
-            return try next.respond(to: req)
+            return try next.respond(to: request)
         } catch {
-            log.error(error)
-            return make(with: req, for: error)
+            log.reportError(error, as: "Error")
+            return make(with: request, for: error)
         }
     }
 
-    public func make(with req: Request, for error: Error) -> Response {
-        let status: Status = Status(error)
+    public func make(with req: Request, for error: Error) -> EventLoopFuture<Response> {
+        let status: HTTPStatus = HTTPStatus(error)
         if status == .notFound {
             do {
-                let response = try viewRenderer.make("404", Node([:])).makeResponse()
-                response.status = .notFound
-                return response
+                let response = try renderer.render("404").encode(for: req)
+                return response.map { res -> Response in
+                    res.http.status = .notFound
+                    return res
+                }
             } catch { /* swallow so we return the default view */ }
         }
-        
+
         do {
-            let parameters: [String: NodeRepresentable] = [
-                "status": status.statusCode.description,
+            let parameters: [String:String] = [
+                "status": status.code.description,
                 "statusMessage": status.reasonPhrase
             ]
-            let response = try viewRenderer.make("serverError", parameters).makeResponse()
-            response.status = status
-            return response
+            return try renderer
+                .render("serverError", parameters)
+                .encode(for: req)
+                .map { res -> Response in
+                    res.http.status = status
+                    return res
+            }
         } catch {
             let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
-            let response = Response(status: status, body: .data(body.makeBytes()))
-            response.headers["Content-Type"] = "text/html; charset=utf-8"
-            return response
+            return try! body.encode(for: req).map { res -> Response in
+                res.http.status = status
+                res.http.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
+                return res
+            }
         }
     }
 }
 
-extension LeafErrorMiddleware: ConfigInitializable {
-    public convenience init(config: Config) throws {
-        let log = try config.resolveLog()
-        let viewRenderer = try config.resolveView()
-        self.init(environment: config.environment, log: log, viewRenderer: viewRenderer)
-    }
-}
+extension LeafErrorMiddleware: Service { }
 
-extension Status {
+extension HTTPStatus {
     internal init(_ error: Error) {
         if let abort = error as? AbortError {
             self = abort.status
