@@ -1,12 +1,6 @@
 import Vapor
 import Leaf
 
-import Async
-import Debugging
-//import HTTP
-import Service
-import Foundation
-
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware: Middleware, Service {
     /// The environment to respect when presenting errors.
