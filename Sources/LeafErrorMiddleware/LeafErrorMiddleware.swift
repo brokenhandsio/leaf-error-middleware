@@ -1,61 +1,85 @@
 import Vapor
-import HTTP
+import Leaf
 
-public final class LeafErrorMiddleware: Middleware {
-    let log: LogProtocol
+import Async
+import Debugging
+//import HTTP
+import Service
+import Foundation
+
+/// Captures all errors and transforms them into an internal server error.
+public final class LeafErrorMiddleware: Middleware, Service {
+    /// The environment to respect when presenting errors.
     let environment: Environment
-    let viewRenderer: ViewRenderer
-    public init(environment: Environment, log: LogProtocol, viewRenderer: ViewRenderer) {
-        self.log = log
+
+    /// Log destination
+    let log: Logger
+
+    /// Create a new ErrorMiddleware for the supplied environment.
+    public init(environment: Environment, log: Logger) {
         self.environment = environment
-        self.viewRenderer = viewRenderer
+        self.log = log
     }
 
-    public func respond(to req: Request, chainingTo next: Responder) throws -> Response {
-        do {
-            return try next.respond(to: req)
-        } catch {
-            log.error(error)
-            return make(with: req, for: error)
-        }
-    }
+    /// See `Middleware.respond`
+    public func respond(to req: Request, chainingTo next: Responder) throws -> Future<Response> {
+        let renderer = try req.make(LeafRenderer.self)
+        let promise = req.eventLoop.newPromise(Response.self)
 
-    public func make(with req: Request, for error: Error) -> Response {
-        let status: Status = Status(error)
-        if status == .notFound {
+        func handleError(with status: HTTPStatus) {
+            if status == .notFound {
+                do {
+                    try renderer
+                        .render("404")
+                        .encode(for: req)
+                        .do { res in
+                            res.http.status = status
+                            promise.succeed(result: res)
+                    }
+                } catch { /* swallow so we return the default view */ }
+            }
+
             do {
-                let response = try viewRenderer.make("404", Node([:])).makeResponse()
-                response.status = .notFound
-                return response
-            } catch { /* swallow so we return the default view */ }
+                let parameters: [String:String] = [
+                    "status": status.code.description,
+                    "statusMessage": status.reasonPhrase
+                ]
+                try renderer
+                    .render("serverError", parameters)
+                    .encode(for: req)
+                    .do { res in
+                        res.http.status = status
+                        promise.succeed(result: res)
+                }
+            } catch {
+                let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
+                try! body.encode(for: req).do { res in
+                    res.http.status = status
+                    res.http.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
+                    promise.succeed(result: res)
+                }
+            }
         }
-        
+
         do {
-            let parameters: [String: NodeRepresentable] = [
-                "status": status.statusCode.description,
-                "statusMessage": status.reasonPhrase
-            ]
-            let response = try viewRenderer.make("serverError", parameters).makeResponse()
-            response.status = status
-            return response
+            try next.respond(to: req).do { res in
+                if res.http.status != .ok {
+                    handleError(with: res.http.status)
+                } else {
+                    promise.succeed(result: res)
+                }
+            }.catch { error in
+                handleError(with: HTTPStatus(error))
+            }
         } catch {
-            let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
-            let response = Response(status: status, body: .data(body.makeBytes()))
-            response.headers["Content-Type"] = "text/html; charset=utf-8"
-            return response
+            handleError(with: HTTPStatus(error))
         }
+
+        return promise.futureResult
     }
 }
 
-extension LeafErrorMiddleware: ConfigInitializable {
-    public convenience init(config: Config) throws {
-        let log = try config.resolveLog()
-        let viewRenderer = try config.resolveView()
-        self.init(environment: config.environment, log: log, viewRenderer: viewRenderer)
-    }
-}
-
-extension Status {
+extension HTTPStatus {
     internal init(_ error: Error) {
         if let abort = error as? AbortError {
             self = abort.status
