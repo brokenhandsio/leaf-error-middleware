@@ -1,5 +1,4 @@
 import Vapor
-import Leaf
 
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware: Middleware, Service {
@@ -17,7 +16,9 @@ public final class LeafErrorMiddleware: Middleware, Service {
 
     /// See `Middleware.respond`
     public func respond(to req: Request, chainingTo next: Responder) throws -> Future<Response> {
-        let renderer = try req.make(LeafRenderer.self)
+        // Must set the preferred renderer:
+        // e.g. config.prefer(LeafRenderer.self, for: TemplateRenderer.self)
+        let renderer = try req.make(TemplateRenderer.self)
 
         func handleError(with status: HTTPStatus) throws -> Future<Response> {
             if status == .notFound {
@@ -58,7 +59,7 @@ public final class LeafErrorMiddleware: Middleware, Service {
         do {
             return try next.respond(to: req)
                 .flatMap(to: Response.self) { res in
-                    if res.http.status != .ok {
+                    if res.http.status.code >= HTTPResponseStatus.badRequest.code {
                         return try handleError(with: res.http.status)
                     } else {
                         return try res.encode(for: req)
