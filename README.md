@@ -22,28 +22,18 @@ Note that this middleware is designed to be used for Leaf front-end websites onl
 
 # Usage
 
-To use the Leaf Error Middleware, just add the middleware to your `Config` and then to your `droplet.json` (make sure you `import LeafErrorMiddleware` at the top):
+To use the Leaf Error Middleware, just add the middleware to your `configure.swift` (make sure you `import LeafErrorMiddleware` at the top):
 
 ```swift
-let config = Config()
-config.addConfigurable(middleware: LeafErrorMiddleware.init, name: "leaf-error"))
-let drop = Droplet(config)
-```
+// Must set the preferred renderer:
+config.prefer(LeafRenderer.self, for: TemplateRenderer.self)
 
-This replaces the default error middleware in Vapor, so ***do not*** include the standard `error` in your `droplet.json`.
-
-***Note:*** You should ensure you set the error middleware as the first middleware in your `droplet.json` to so all errors get caught (unless you are using something like [Vapor Security Headers](https://github.com/brokenhandsio/VaporSecurityHeaders/)):
-
-```json
-{
-    ...
-    "middleware": [
-        "leaf-error",
-        ...
-    ],
-    ...
+services.register { worker in
+    return try LeafErrorMiddleware(environment: worker.environment, log: worker.make())
 }
 ```
+
+This replaces the default error middleware in Vapor, so ***do not*** include the standard `ErrorMiddleware`.
 
 You will need to add it as a dependency in your `Package.swift` file:
 
@@ -65,5 +55,3 @@ When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` te
 
 * `status` - the status code of the error caught
 * `statusMessage` - a reason for the status code
-
-The actual error will also be logged out to the `Droplet`s log.
