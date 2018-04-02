@@ -1,12 +1,14 @@
 import Vapor
 
-class CapturingLogger: LogProtocol {
+class CapturingLogger: Logger {
+
     var enabled: [LogLevel] = []
     
     private(set) var message: String?
     private(set) var logLevel: LogLevel?
-    func log(_ level: LogLevel, message: String, file: String, function: String, line: Int) {
-        self.message = message
+
+    func log(_ string: String, at level: LogLevel, file: String, function: String, line: UInt, column: UInt) {
+        self.message = string
         self.logLevel = level
     }
 }
