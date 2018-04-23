@@ -1,6 +1,6 @@
 import Vapor
 
-class ThrowingViewRenderer {
+class ThrowingViewRenderer: ViewRenderer {
     
     var shouldCache = false
     var shouldThrow = false
