@@ -7,7 +7,7 @@ let package = Package(
         .library(name: "LeafErrorMiddleware", targets: ["LeafErrorMiddleware"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0-rc"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0"),
     ],
     targets: [
         .target(name: "LeafErrorMiddleware", dependencies: ["Vapor"]),
