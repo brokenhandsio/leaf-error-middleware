@@ -26,8 +26,6 @@ public final class LeafErrorMiddleware: Middleware, Service {
     }
 
     private func handleError(for req: Request, status: HTTPStatus) throws -> Future<Response> {
-        // Must set the preferred renderer:
-        // e.g. config.prefer(LeafRenderer.self, for: TemplateRenderer.self)
         let renderer = try req.make(ViewRenderer.self)
 
         if status == .notFound {
