@@ -1,6 +1,6 @@
 import Vapor
 
-class CapturingLogger: Logger {
+class CapturingLogger: Logger, Service {
 
     var enabled: [LogLevel] = []
     

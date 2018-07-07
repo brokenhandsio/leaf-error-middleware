@@ -13,6 +13,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testThatErrorGetsLogged", testThatErrorGetsLogged),
         ("testThatMiddlewareFallsBackIfViewRendererFails", testThatMiddlewareFallsBackIfViewRendererFails),
         ("testThatMiddlewareFallsBackIfViewRendererFailsFor404", testThatMiddlewareFallsBackIfViewRendererFailsFor404),
+        ("testMessageLoggedIfRendererThrows", testMessageLoggedIfRendererThrows),
         ("testThatRandomErrorGetsReturnedAsServerError", testThatRandomErrorGetsReturnedAsServerError),
         ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
     ]
@@ -34,8 +35,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
         services.register(ViewRenderer.self) { container -> ThrowingViewRenderer in
             return self.viewRenderer
         }
+        services.register(Logger.self) { container -> CapturingLogger in
+            return self.logger
+        }
 
         config.prefer(ThrowingViewRenderer.self, for: ViewRenderer.self)
+        config.prefer(CapturingLogger.self, for: Logger.self)
 
         func routes(_ router: Router) throws {
 
@@ -102,7 +107,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
     func testThatErrorGetsLogged() throws {
         _ = try app.getResponse(to: "/serverError")
         XCTAssertNotNil(logger.message)
-//        XCTAssertEqual(logger.logLevel!, LogLevel.error)
+        XCTAssertEqual(logger.logLevel!, LogLevel.error)
     }
     
     func testThatMiddlewareFallsBackIfViewRendererFails() throws {
@@ -117,6 +122,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/unknown")
         XCTAssertEqual(response.http.status, .notFound)
         XCTAssertEqual(response.http.body.string, "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+    }
+
+    func testMessageLoggedIfRendererThrows() throws {
+        viewRenderer.shouldThrow = true
+        _ = try app.getResponse(to: "/serverError")
+        XCTAssertTrue(logger.message?.starts(with: "Failed to render custom error page") ?? false)
     }
     
     func testThatRandomErrorGetsReturnedAsServerError() throws {

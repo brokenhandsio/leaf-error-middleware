@@ -39,19 +39,18 @@ public final class LeafErrorMiddleware: Middleware, Service {
             } catch { /* swallow so we return the default view */ }
         }
 
-        do {
-            let parameters: [String:String] = [
-                "status": status.code.description,
-                "statusMessage": status.reasonPhrase
-            ]
-            return try renderer
-                .render("serverError", parameters)
-                .encode(for: req)
-                .map(to: Response.self) { res in
-                    res.http.status = status
-                    return res
-            }
-        } catch let error {
+        let parameters: [String:String] = [
+            "status": status.code.description,
+            "statusMessage": status.reasonPhrase
+        ]
+
+        let logger = try req.make(Logger.self)
+        logger.error("Internal server error. Status: \(status.code) - path: \(req.http.url)")
+
+        return try renderer.render("serverError", parameters).encode(for: req).map(to: Response.self) { res in
+            res.http.status = status
+            return res
+        }.catchFlatMap { error -> Future<Response> in
             let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
             let logger = try req.make(Logger.self)
             logger.error("Failed to render custom error page - \(error)")
