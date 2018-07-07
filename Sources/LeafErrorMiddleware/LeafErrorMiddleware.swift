@@ -31,35 +31,39 @@ public final class LeafErrorMiddleware: Middleware, Service {
         let renderer = try req.make(ViewRenderer.self)
 
         if status == .notFound {
-            do {
-                return try renderer.render("404").encode(for: req).map(to: Response.self) { res in
-                    res.http.status = status
-                    return res
-                }
-            } catch { /* swallow so we return the default view */ }
+            return try renderer.render("404").encode(for: req).map(to: Response.self) { res in
+                res.http.status = status
+                return res
+            }.catchFlatMap { _ in
+                return try self.renderServerErrorPage(for: status, request: req, renderer: renderer)
+            }
         }
 
+        return try renderServerErrorPage(for: status, request: req, renderer: renderer)
+    }
+
+    private func renderServerErrorPage(for status: HTTPStatus, request: Request, renderer: ViewRenderer) throws -> Future<Response> {
         let parameters: [String:String] = [
             "status": status.code.description,
             "statusMessage": status.reasonPhrase
         ]
 
-        let logger = try req.make(Logger.self)
-        logger.error("Internal server error. Status: \(status.code) - path: \(req.http.url)")
+        let logger = try request.make(Logger.self)
+        logger.error("Internal server error. Status: \(status.code) - path: \(request.http.url)")
 
-        return try renderer.render("serverError", parameters).encode(for: req).map(to: Response.self) { res in
+        return try renderer.render("serverError", parameters).encode(for: request).map(to: Response.self) { res in
             res.http.status = status
             return res
-        }.catchFlatMap { error -> Future<Response> in
-            let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
-            let logger = try req.make(Logger.self)
-            logger.error("Failed to render custom error page - \(error)")
-            return try body.encode(for: req)
-                .map(to: Response.self) { res in
-                    res.http.status = status
-                    res.http.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
-                    return res
-            }
+            }.catchFlatMap { error -> Future<Response> in
+                let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
+                let logger = try request.make(Logger.self)
+                logger.error("Failed to render custom error page - \(error)")
+                return try body.encode(for: request)
+                    .map(to: Response.self) { res in
+                        res.http.status = status
+                        res.http.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
+                        return res
+                }
         }
     }
 }

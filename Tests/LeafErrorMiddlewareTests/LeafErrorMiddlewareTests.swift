@@ -73,7 +73,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
         middlewares.use(LeafErrorMiddleware.self)
         services.register(middlewares)
 
-        app = try! Application(config: config, environment: .xcode, services: services)
+        app = try! Application(config: config, services: services)
     }
     
     // MARK: - Tests
@@ -156,79 +156,16 @@ extension HTTPBody {
 }
 
 extension Application {
-    static func runningTest(port: Int, configure: (Router) throws -> ()) throws -> Application {
-        let router = EngineRouter.default()
-        try configure(router)
-        var services = Services.default()
-        services.register(router, as: Router.self)
-        let serverConfig = EngineServerConfig(
-            hostname: "localhost",
-            port: port,
-            backlog: 8,
-            workerCount: 1,
-            maxBodySize: 128_000,
-            reuseAddress: true,
-            tcpNoDelay: true
-        )
-        services.register(serverConfig)
-        let app = try Application.asyncBoot(config: .default(), environment: .xcode, services: services).wait()
-        try app.asyncRun().wait()
-        return app
-    }
-
-    static func makeTest(configure: (Router) throws -> ()) throws -> Application {
-        let router = EngineRouter.default()
-        try configure(router)
-        var services = Services.default()
-        services.register(router, as: Router.self)
-        return try Application.asyncBoot(config: .default(), environment: .xcode, services: services).wait()
-    }
-}
-
-extension Application {
-    func test(_ method: HTTPMethod, _ path: String, check: (Response) throws -> ()) throws {
-        let http = HTTPRequest(method: method, url: URL(string: path)!)
-        let req = Request(http: http, using: self)
-        let res = try make(Responder.self).respond(to: req).wait()
-        try check(res)
-    }
-
-    func clientTest(_ method: HTTPMethod, _ path: String, check: (Response) throws -> ()) throws {
-        let config = try make(EngineServerConfig.self)
-        let res = try FoundationClient.default(on: self).send(method, to: "http://localhost:\(config.port)" + path).wait()
-        try check(res)
-    }
-
-
-    func clientTest(_ method: HTTPMethod, _ path: String, equals: String) throws {
-        return try clientTest(method, path) { res in
-            XCTAssertEqual(res.http.body.string, equals)
-        }
-    }
-
-    func clientTest(_ method: HTTPMethod, _ path: String, equals: HTTPStatus) throws {
-        return try clientTest(method, path) { res in
-            XCTAssertEqual(res.http.status, equals)
-        }
-    }
-
     func getResponse(to path: String) throws -> Response {
         let responder = try self.make(Responder.self)
         let request = HTTPRequest(method: .GET, url: URL(string: path)!)
         let wrappedRequest = Request(http: request, using: self)
         return try responder.respond(to: wrappedRequest).wait()
     }
-
 }
 
 extension LogLevel: Equatable {
     public static func == (lhs: LogLevel, rhs: LogLevel) -> Bool {
         return lhs.description == rhs.description
-    }
-}
-
-extension Environment {
-    static var xcode: Environment {
-        return .init(name: "xcode", isRelease: false, arguments: ["xcode"])
     }
 }
