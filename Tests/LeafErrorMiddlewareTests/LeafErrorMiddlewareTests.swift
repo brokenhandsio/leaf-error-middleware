@@ -1,6 +1,6 @@
 import XCTest
 import LeafErrorMiddleware
-import Vapor
+@testable import Vapor
 
 class LeafErrorMiddlewareTests: XCTestCase {
     
@@ -13,48 +13,67 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testThatErrorGetsLogged", testThatErrorGetsLogged),
         ("testThatMiddlewareFallsBackIfViewRendererFails", testThatMiddlewareFallsBackIfViewRendererFails),
         ("testThatMiddlewareFallsBackIfViewRendererFailsFor404", testThatMiddlewareFallsBackIfViewRendererFailsFor404),
+        ("testMessageLoggedIfRendererThrows", testMessageLoggedIfRendererThrows),
         ("testThatRandomErrorGetsReturnedAsServerError", testThatRandomErrorGetsReturnedAsServerError),
         ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
     ]
     
     // MARK: - Properties
-    var drop: Droplet!
+    var app: Application!
     var viewRenderer: ThrowingViewRenderer!
     var logger: CapturingLogger!
     
     // MARK: - Overrides
     override func setUp() {
-        var config = Config([:])
-        viewRenderer = ThrowingViewRenderer()
+        var config = Config.default()
+        var services = Services.default()
+
+        let worker = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+        viewRenderer = ThrowingViewRenderer(worker: worker)
         logger = CapturingLogger()
-        config.addConfigurable(middleware: LeafErrorMiddleware.init, name: "leaf-error")
-        config.addConfigurable(view: { (_) -> (ThrowingViewRenderer) in
+
+        services.register(ViewRenderer.self) { container -> ThrowingViewRenderer in
             return self.viewRenderer
-        }, name: "configurable")
-        config.addConfigurable(log: { (_) -> (CapturingLogger) in
+        }
+        services.register(Logger.self) { container -> CapturingLogger in
             return self.logger
-        }, name: "capturing")
-        try! config.set("droplet.middleware", ["leaf-error"])
-        try! config.set("droplet.view", "configurable")
-        try! config.set("droplet.log", "capturing")
-        
-        drop = try! Droplet(config)
-        
-        drop.get("ok") { req in
-            return "OK"
         }
-        
-        drop.get("serverError") { req in
-            throw Abort.serverError
+
+        config.prefer(ThrowingViewRenderer.self, for: ViewRenderer.self)
+        config.prefer(CapturingLogger.self, for: Logger.self)
+
+        func routes(_ router: Router) throws {
+
+            router.get("ok") { req in
+                return "ok"
+            }
+
+            router.get("serverError") { req -> Future<Response> in
+                throw Abort(.internalServerError)
+            }
+
+            router.get("unknownError") { req -> Future<Response> in
+                throw TestError()
+            }
+
+            router.get("unauthorized") { req -> Future<Response> in
+                throw Abort(.unauthorized)
+            }
         }
-        
-        drop.get("unknownError") { req in
-            throw TestError()
+
+        let router = EngineRouter.default()
+        try! routes(router)
+        services.register(router, as: Router.self)
+
+        services.register { worker in
+            return LeafErrorMiddleware(environment: worker.environment)
         }
-        
-        drop.get("unauthorized") { req in
-            throw Abort.unauthorized
-        }
+
+        var middlewares = MiddlewareConfig()
+        middlewares.use(LeafErrorMiddleware.self)
+        services.register(middlewares)
+
+        app = try! Application(config: config, services: services)
     }
     
     // MARK: - Tests
@@ -69,61 +88,84 @@ class LeafErrorMiddlewareTests: XCTestCase {
     }
     
     func testThatValidEndpointWorks() throws {
-        let response = try drop.respond(to: Request(method: .get, uri: "/ok"))
-        
-        XCTAssertEqual(response.status, .ok)
+        let response = try app.getResponse(to: "/ok")
+        XCTAssertEqual(response.http.status, .ok)
     }
     
     func testThatRequestingInvalidEndpointReturns404View() throws {
-        let response = try drop.respond(to: Request(method: .get, uri: "/unknown"))
-        
-        XCTAssertEqual(response.status, .notFound)
+        let response = try app.getResponse(to: "/unknown")
+        XCTAssertEqual(response.http.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
     }
     
     func testThatRequestingPageThatCausesAServerErrorReturnsServerErrorView() throws {
-        let response = try drop.respond(to: Request(method: .get, uri: "/serverError"))
-        
-        XCTAssertEqual(response.status, .internalServerError)
+        let response = try app.getResponse(to: "/serverError")
+        XCTAssertEqual(response.http.status, .internalServerError)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
     
     func testThatErrorGetsLogged() throws {
-        _ = try drop.respond(to: Request(method: .get, uri: "/serverError"))
-        
+        _ = try app.getResponse(to: "/serverError")
         XCTAssertNotNil(logger.message)
-        XCTAssertEqual(logger.logLevel, .error)
+        XCTAssertEqual(logger.logLevel!, LogLevel.error)
     }
     
     func testThatMiddlewareFallsBackIfViewRendererFails() throws {
         viewRenderer.shouldThrow = true
-        let response = try drop.respond(to: Request(method: .get, uri: "/serverError"))
-        
-        XCTAssertEqual(response.status, .internalServerError)
-        XCTAssertEqual(response.body.bytes?.makeString(), "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+        let response = try app.getResponse(to: "/serverError")
+        XCTAssertEqual(response.http.status, .internalServerError)
+        XCTAssertEqual(response.http.body.string, "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
     }
     
     func testThatMiddlewareFallsBackIfViewRendererFailsFor404() throws {
         viewRenderer.shouldThrow = true
-        let response = try drop.respond(to: Request(method: .get, uri: "/unknown"))
-        
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(response.body.bytes?.makeString(), "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+        let response = try app.getResponse(to: "/unknown")
+        XCTAssertEqual(response.http.status, .notFound)
+        XCTAssertEqual(response.http.body.string, "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+    }
+
+    func testMessageLoggedIfRendererThrows() throws {
+        viewRenderer.shouldThrow = true
+        _ = try app.getResponse(to: "/serverError")
+        XCTAssertTrue(logger.message?.starts(with: "Failed to render custom error page") ?? false)
     }
     
     func testThatRandomErrorGetsReturnedAsServerError() throws {
-        let response = try drop.respond(to: Request(method: .get, uri: "/unknownError"))
-        
-        XCTAssertEqual(response.status, .internalServerError)
+        let response = try app.getResponse(to: "/unknownError")
+        XCTAssertEqual(response.http.status, .internalServerError)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
     
     func testThatUnauthorisedIsPassedThroughToServerErrorPage() throws {
-        let response = try drop.respond(to: Request(method: .get, uri: "/unauthorized"))
-        
-        XCTAssertEqual(response.status, .unauthorized)
+        let response = try app.getResponse(to: "/unauthorized")
+        XCTAssertEqual(response.http.status, .unauthorized)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
-        XCTAssertEqual(viewRenderer.capturedContext?["status"]?.string, "401")
-        XCTAssertEqual(viewRenderer.capturedContext?["statusMessage"]?.string, "Unauthorized")
+        guard let contextDictionary = viewRenderer.capturedContext as? [String: String] else {
+            XCTFail()
+            return
+        }
+        XCTAssertEqual(contextDictionary["status"], "401")
+        XCTAssertEqual(contextDictionary["statusMessage"], "Unauthorized")
+    }
+}
+
+extension HTTPBody {
+    var string: String {
+        return String(data: data!, encoding: .utf8)!
+    }
+}
+
+extension Application {
+    func getResponse(to path: String) throws -> Response {
+        let responder = try self.make(Responder.self)
+        let request = HTTPRequest(method: .GET, url: URL(string: path)!)
+        let wrappedRequest = Request(http: request, using: self)
+        return try responder.respond(to: wrappedRequest).wait()
+    }
+}
+
+extension LogLevel: Equatable {
+    public static func == (lhs: LogLevel, rhs: LogLevel) -> Bool {
+        return lhs.description == rhs.description
     }
 }

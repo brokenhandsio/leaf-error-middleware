@@ -3,7 +3,7 @@
     <br>
     <br>
     <a href="https://swift.org">
-        <img src="http://img.shields.io/badge/Swift-4-brightgreen.svg" alt="Language">
+        <img src="http://img.shields.io/badge/Swift-4.1-brightgreen.svg" alt="Language">
     </a>
     <a href="https://travis-ci.org/brokenhandsio/leaf-error-middleware">
         <img src="https://travis-ci.org/brokenhandsio/leaf-error-middleware.svg?branch=master" alt="Build Status">
@@ -16,43 +16,46 @@
     </a>
 </p>
 
-Leaf Error Middleware is a piece of middleware for [Vapor](https://github.com/vapor/vapor) which allows you to return custom 404 and server error pages. It supports both Swift 3 and Swift 4.
+Leaf Error Middleware is a piece of middleware for [Vapor](https://github.com/vapor/vapor) which allows you to return custom 404 and server error pages.
 
 Note that this middleware is designed to be used for Leaf front-end websites only - it should not be used for providing JSON error responses for an API, for example.
 
 # Usage
 
-To use the Leaf Error Middleware, just add the middleware to your `Config` and then to your `droplet.json` (make sure you `import LeafErrorMiddleware` at the top):
-
-```swift
-let config = Config()
-config.addConfigurable(middleware: LeafErrorMiddleware.init, name: "leaf-error"))
-let drop = Droplet(config)
-```
-
-This replaces the default error middleware in Vapor, so ***do not*** include the standard `error` in your `droplet.json`.
-
-***Note:*** You should ensure you set the error middleware as the first middleware in your `droplet.json` to so all errors get caught (unless you are using something like [Vapor Security Headers](https://github.com/brokenhandsio/VaporSecurityHeaders/)):
-
-```json
-{
-    ...
-    "middleware": [
-        "leaf-error",
-        ...
-    ],
-    ...
-}
-```
-
-You will need to add it as a dependency in your `Package.swift` file:
+First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 
 ```swift
 dependencies: [
-    ...,
+    // ...,
     .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "0.1.0")
+],
+targets: [
+    .target(name: "App", dependencies: ["Vapor", ..., "LeafErrorMiddleware"]),
+    // ...
 ]
 ```
+
+To use the LeafErrorMiddleware, register the middleware service in `configure.swift` (make sure you `import LeafErrorMiddleware` at the top):
+
+```swift
+// You must set the preferred renderer:
+config.prefer(LeafRenderer.self, for: TemplateRenderer.self)
+
+services.register { worker in
+    return try LeafErrorMiddleware(environment: worker.environment)
+}
+```
+
+Then add it to your `MiddlewareConfig`:
+
+```swift
+var middlewares = MiddlewareConfig()
+middlewares.use(LeafErrorMiddleware.self)
+// ...
+services.register(middlewares)
+```
+
+This replaces the default error middleware in Vapor, so ***do not*** add the default `ErrorMiddleware` to your `MiddlewareConfig`.
 
 # Setting Up
 
@@ -65,5 +68,3 @@ When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` te
 
 * `status` - the status code of the error caught
 * `statusMessage` - a reason for the status code
-
-The actual error will also be logged out to the `Droplet`s log.
