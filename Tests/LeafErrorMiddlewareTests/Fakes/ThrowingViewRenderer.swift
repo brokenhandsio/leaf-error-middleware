@@ -12,7 +12,7 @@ class ThrowingViewRenderer: ViewRenderer, Service {
 
     private(set) var capturedContext: Encodable? = nil
     private(set) var leafPath: String? = nil
-    func render<E>(_ path: String, _ context: E) -> EventLoopFuture<View> where E : Encodable {
+    func render<E>(_ path: String, _ context: E, userInfo: [AnyHashable : Any]) -> EventLoopFuture<View> where E : Encodable {
         self.capturedContext = context
         self.leafPath = path
         if shouldThrow {
