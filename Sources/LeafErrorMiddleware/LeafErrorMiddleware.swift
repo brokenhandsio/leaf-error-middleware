@@ -20,7 +20,7 @@ public final class LeafErrorMiddleware: Middleware, Service {
                     return try res.encode(for: req)
                 }
             }.catchFlatMap { error in
-                return try self.handleError(for: req, status: error.localizedDescription.contains("Abort.404") ? .notFound : .internalServerError)
+                return try self.handleError(for: req, status: error.localizedDescription.contains("Abort.404") ? .notFound : .forbidden)
             }
         } catch {
             return try handleError(for: req, status: HTTPStatus(error))

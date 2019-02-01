@@ -166,7 +166,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
     
     func testThatFuture403IsCaughtCorrectly() throws {
         let response = try app.getResponse(to: "/future403")
-        XCTAssertEqual(response.http.status, .internalServerError)
+        XCTAssertEqual(response.http.status, .forbidden)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 }
