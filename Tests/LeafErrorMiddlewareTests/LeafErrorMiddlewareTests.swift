@@ -67,7 +67,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
             }
             
             router.get("future403") { req -> Future<Response> in
-                return req.future(error: Abort(.unauthorized))
+                return req.future(error: Abort(.forbidden))
             }
         }
 
