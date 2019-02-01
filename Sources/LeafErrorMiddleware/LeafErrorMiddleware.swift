@@ -19,6 +19,13 @@ public final class LeafErrorMiddleware: Middleware, Service {
                 } else {
                     return try res.encode(for: req)
                 }
+            }.catchFlatMap { error in
+                switch (error) {
+                case let abort as AbortError:
+                    return try self.handleError(for: req, status: abort.status)
+                default:
+                        return try self.handleError(for: req, status: .internalServerError)
+                }
             }
         } catch {
             return try handleError(for: req, status: HTTPStatus(error))

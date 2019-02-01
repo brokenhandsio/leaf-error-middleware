@@ -16,6 +16,8 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testMessageLoggedIfRendererThrows", testMessageLoggedIfRendererThrows),
         ("testThatRandomErrorGetsReturnedAsServerError", testThatRandomErrorGetsReturnedAsServerError),
         ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
+        ("testThatFuture404IsCaughtCorrectly", testThatFuture404IsCaughtCorrectly),
+        ("testThatFuture403IsCaughtCorrectly", testThatFuture403IsCaughtCorrectly),
     ]
     
     // MARK: - Properties
@@ -58,6 +60,14 @@ class LeafErrorMiddlewareTests: XCTestCase {
 
             router.get("unauthorized") { req -> Future<Response> in
                 throw Abort(.unauthorized)
+            }
+            
+            router.get("future404") { req -> Future<Response> in
+                return req.future(error: Abort(.notFound))
+            }
+            
+            router.get("future403") { req -> Future<Response> in
+                return req.future(error: Abort(.forbidden))
             }
         }
 
@@ -146,6 +156,18 @@ class LeafErrorMiddlewareTests: XCTestCase {
         }
         XCTAssertEqual(contextDictionary["status"], "401")
         XCTAssertEqual(contextDictionary["statusMessage"], "Unauthorized")
+    }
+    
+    func testThatFuture404IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/future404")
+        XCTAssertEqual(response.http.status, .notFound)
+        XCTAssertEqual(viewRenderer.leafPath, "404")
+    }
+    
+    func testThatFuture403IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/future403")
+        XCTAssertEqual(response.http.status, .forbidden)
+        XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 }
 
