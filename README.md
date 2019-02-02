@@ -39,7 +39,7 @@ To use the LeafErrorMiddleware, register the middleware service in `configure.sw
 
 ```swift
 // You must set the preferred renderer:
-config.prefer(LeafRenderer.self, for: TemplateRenderer.self)
+config.prefer(LeafRenderer.self, for: ViewRenderer.self)
 
 services.register { worker in
     return try LeafErrorMiddleware(environment: worker.environment)
