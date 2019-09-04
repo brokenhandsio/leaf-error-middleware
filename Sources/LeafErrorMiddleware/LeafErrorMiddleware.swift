@@ -22,9 +22,17 @@ public final class LeafErrorMiddleware: Middleware, Service {
             }.catchFlatMap { error in
                 switch (error) {
                 case let abort as AbortError:
-                    return try self.handleError(for: req, status: abort.status)
+                    guard
+                        abort.status.isRedirect,
+                        let redirectURI = abort.headers[HTTPHeaderName.location.description].first
+                    else {
+                        return try self.handleError(for: req, status: abort.status)
+                    }
+
+                    return req.future(req.redirect(to: redirectURI))
+
                 default:
-                        return try self.handleError(for: req, status: .internalServerError)
+                    return try self.handleError(for: req, status: .internalServerError)
                 }
             }
         } catch {
@@ -80,5 +88,11 @@ extension HTTPStatus {
         } else {
             self = .internalServerError
         }
+    }
+}
+
+private extension HTTPResponseStatus {
+    var isRedirect: Bool {
+        return (HTTPResponseStatus.multiStatus.code ... HTTPResponseStatus.permanentRedirect.code) ~= code
     }
 }
