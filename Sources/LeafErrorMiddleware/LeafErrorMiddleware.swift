@@ -23,7 +23,7 @@ public final class LeafErrorMiddleware: Middleware, Service {
                 switch (error) {
                 case let abort as AbortError:
                     guard
-                        abort.status.isRedirect,
+                        abort.status.representsError,
                         let redirectURI = abort.headers[HTTPHeaderName.location.description].first
                     else {
                         return try self.handleError(for: req, status: abort.status)
@@ -92,7 +92,7 @@ extension HTTPStatus {
 }
 
 private extension HTTPResponseStatus {
-    var isRedirect: Bool {
-        return (HTTPResponseStatus.multiStatus.code ... HTTPResponseStatus.permanentRedirect.code) ~= code
+    var representsError: Bool {
+        return (HTTPResponseStatus.badRequest.code ... HTTPResponseStatus.networkAuthenticationRequired.code) ~= code
     }
 }
