@@ -18,6 +18,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
         ("testThatUnauthorisedIsPassedThroughToServerErrorPage", testThatUnauthorisedIsPassedThroughToServerErrorPage),
         ("testThatFuture404IsCaughtCorrectly", testThatFuture404IsCaughtCorrectly),
         ("testThatFuture403IsCaughtCorrectly", testThatFuture403IsCaughtCorrectly),
+        ("testThatRedirectIsNotCaught", testThatRedirectIsNotCaught)
     ]
     
     // MARK: - Properties
@@ -68,6 +69,10 @@ class LeafErrorMiddlewareTests: XCTestCase {
             
             router.get("future403") { req -> Future<Response> in
                 return req.future(error: Abort(.forbidden))
+            }
+
+            router.get("future303") { req -> Future<Response> in
+                return req.future(error: Abort.redirect(to: "ok"))
             }
         }
 
@@ -168,6 +173,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/future403")
         XCTAssertEqual(response.http.status, .forbidden)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
+    }
+
+    func testThatRedirectIsNotCaught() throws {
+        let response = try app.getResponse(to: "/future303")
+        XCTAssertEqual(response.http.status, .seeOther)
+        XCTAssertEqual(response.http.body.string, "Test")
     }
 }
 
