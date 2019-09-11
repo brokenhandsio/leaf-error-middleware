@@ -23,14 +23,15 @@ public final class LeafErrorMiddleware: Middleware, Service {
                 switch (error) {
                 case let abort as AbortError:
                     guard
-                        abort.status.representsError,
-                        let redirectURI = abort.headers[HTTPHeaderName.location.description].first
+                        abort.status.representsError
                     else {
-                        return try self.handleError(for: req, status: abort.status)
+                        if let location = abort.headers[.location].first {
+                            return req.future(req.redirect(to: location))
+                        } else {
+                            return try self.handleError(for: req, status: abort.status)
+                        }
                     }
-
-                    return req.future(req.redirect(to: redirectURI))
-
+                    return try self.handleError(for: req, status: abort.status)
                 default:
                     return try self.handleError(for: req, status: .internalServerError)
                 }

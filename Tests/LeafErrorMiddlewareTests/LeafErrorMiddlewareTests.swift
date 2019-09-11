@@ -178,7 +178,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
     func testThatRedirectIsNotCaught() throws {
         let response = try app.getResponse(to: "/future303")
         XCTAssertEqual(response.http.status, .seeOther)
-        XCTAssertEqual(response.http.body.string, "Test")
+        XCTAssertEqual(response.http.headers[.location].first, "ok")
     }
 }
 
