@@ -22,9 +22,18 @@ public final class LeafErrorMiddleware: Middleware, Service {
             }.catchFlatMap { error in
                 switch (error) {
                 case let abort as AbortError:
+                    guard
+                        abort.status.representsError
+                    else {
+                        if let location = abort.headers[.location].first {
+                            return req.future(req.redirect(to: location))
+                        } else {
+                            return try self.handleError(for: req, status: abort.status)
+                        }
+                    }
                     return try self.handleError(for: req, status: abort.status)
                 default:
-                        return try self.handleError(for: req, status: .internalServerError)
+                    return try self.handleError(for: req, status: .internalServerError)
                 }
             }
         } catch {
@@ -80,5 +89,11 @@ extension HTTPStatus {
         } else {
             self = .internalServerError
         }
+    }
+}
+
+private extension HTTPResponseStatus {
+    var representsError: Bool {
+        return (HTTPResponseStatus.badRequest.code ... HTTPResponseStatus.networkAuthenticationRequired.code) ~= code
     }
 }
