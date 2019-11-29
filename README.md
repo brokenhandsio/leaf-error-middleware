@@ -5,8 +5,8 @@
     <a href="https://swift.org">
         <img src="http://img.shields.io/badge/Swift-4.1-brightgreen.svg" alt="Language">
     </a>
-    <a href="https://travis-ci.org/brokenhandsio/leaf-error-middleware">
-        <img src="https://travis-ci.org/brokenhandsio/leaf-error-middleware.svg?branch=master" alt="Build Status">
+    <a href="https://github.com/brokenhandsio/leaf-error-middleware/actions">
+        <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=master" alt="Build Status">
     </a>
     <a href="https://codecov.io/gh/brokenhandsio/leaf-error-middleware">
         <img src="https://codecov.io/gh/brokenhandsio/leaf-error-middleware/branch/master/graph/badge.svg" alt="Code Coverage">
