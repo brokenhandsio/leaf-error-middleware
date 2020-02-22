@@ -20,6 +20,7 @@ public final class LeafErrorMiddleware: Middleware, Service {
                     return try res.encode(for: req)
                 }
             }.catchFlatMap { error in
+                try? req.make(Logger.self).report(error: error, verbose: true)
                 switch (error) {
                 case let abort as AbortError:
                     guard
