@@ -1,84 +1,75 @@
 import Vapor
 
 /// Captures all errors and transforms them into an internal server error.
-public final class LeafErrorMiddleware: Middleware, Service {
+public final class LeafErrorMiddleware: Middleware {
     /// The environment to respect when presenting errors.
     let environment: Environment
-
+    
     /// Create a new ErrorMiddleware for the supplied environment.
     public init(environment: Environment) {
         self.environment = environment
     }
-
+    
     /// See `Middleware.respond`
-    public func respond(to req: Request, chainingTo next: Responder) throws -> Future<Response> {
-        do {
-            return try next.respond(to: req).flatMap(to: Response.self) { res in
-                if res.http.status.code >= HTTPResponseStatus.badRequest.code {
-                    return try self.handleError(for: req, status: res.http.status)
-                } else {
-                    return try res.encode(for: req)
-                }
-            }.catchFlatMap { error in
-                try? req.make(Logger.self).report(error: error, verbose: true)
-                switch (error) {
-                case let abort as AbortError:
-                    guard
-                        abort.status.representsError
+    public func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
+        return next.respond(to: request).flatMap { res in
+            if res.status.code >= HTTPResponseStatus.badRequest.code {
+                return self.handleError(for: request, status: res.status)
+            } else {
+                return res.encodeResponse(for: request)
+            }
+        }.flatMapError { error in
+            request.logger.warning("Error received: \(error)")
+            switch (error) {
+            case let abort as AbortError:
+                guard
+                    abort.status.representsError
                     else {
                         if let location = abort.headers[.location].first {
-                            return req.future(req.redirect(to: location))
+                            return request.eventLoop.future(request.redirect(to: location))
                         } else {
-                            return try self.handleError(for: req, status: abort.status)
+                            return self.handleError(for: request, status: abort.status)
                         }
-                    }
-                    return try self.handleError(for: req, status: abort.status)
-                default:
-                    return try self.handleError(for: req, status: .internalServerError)
                 }
+                return self.handleError(for: request, status: abort.status)
+            default:
+                return self.handleError(for: request, status: .internalServerError)
             }
-        } catch {
-            return try handleError(for: req, status: HTTPStatus(error))
         }
     }
-
-    private func handleError(for req: Request, status: HTTPStatus) throws -> Future<Response> {
-        let renderer = try req.make(ViewRenderer.self)
-
+    
+    private func handleError(for req: Request, status: HTTPStatus) -> EventLoopFuture<Response> {
         if status == .notFound {
-            return try renderer.render("404").encode(for: req).map(to: Response.self) { res in
-                res.http.status = status
+            return req.view.render("404").encodeResponse(for: req).map { res in
+                res.status = status
                 return res
-            }.catchFlatMap { _ in
-                return try self.renderServerErrorPage(for: status, request: req, renderer: renderer)
+            }.flatMapError { _ in
+                return self.renderServerErrorPage(for: status, request: req)
             }
         }
-
-        return try renderServerErrorPage(for: status, request: req, renderer: renderer)
+        
+        return renderServerErrorPage(for: status, request: req)
     }
-
-    private func renderServerErrorPage(for status: HTTPStatus, request: Request, renderer: ViewRenderer) throws -> Future<Response> {
+    
+    private func renderServerErrorPage(for status: HTTPStatus, request: Request) -> EventLoopFuture<Response> {
         let parameters: [String:String] = [
             "status": status.code.description,
             "statusMessage": status.reasonPhrase
         ]
-
-        let logger = try request.make(Logger.self)
-        logger.error("Internal server error. Status: \(status.code) - path: \(request.http.url)")
-
-        return try renderer.render("serverError", parameters).encode(for: request).map(to: Response.self) { res in
-            res.http.status = status
+        
+        request.logger.error("Internal server error. Status: \(status.code) - path: \(request.url)")
+        
+        return request.view.render("serverError", parameters).encodeResponse(for: request).map { res in
+            res.status = status
             return res
-            }.catchFlatMap { error -> Future<Response> in
-                let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
-                let logger = try request.make(Logger.self)
-                logger.error("Failed to render custom error page - \(error)")
-                return try body.encode(for: request)
-                    .map(to: Response.self) { res in
-                        res.http.status = status
-                        res.http.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
-                        return res
-                }
+        }.flatMapError { error -> EventLoopFuture<Response> in
+            let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
+            request.logger.error("Failed to render custom error page - \(error)")
+            return body.encodeResponse(for: request).map { res in
+                res.status = status
+                res.headers.replaceOrAdd(name: .contentType, value: "text/html; charset=utf-8")
+                return res
+            }
         }
     }
 }
