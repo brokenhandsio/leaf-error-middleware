@@ -74,16 +74,6 @@ public final class LeafErrorMiddleware: Middleware {
     }
 }
 
-extension HTTPStatus {
-    internal init(_ error: Error) {
-        if let abort = error as? AbortError {
-            self = abort.status
-        } else {
-            self = .internalServerError
-        }
-    }
-}
-
 private extension HTTPResponseStatus {
     var representsError: Bool {
         return (HTTPResponseStatus.badRequest.code ... HTTPResponseStatus.networkAuthenticationRequired.code) ~= code
