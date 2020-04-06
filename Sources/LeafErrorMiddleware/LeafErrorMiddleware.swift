@@ -9,7 +9,7 @@ public final class LeafErrorMiddleware: Middleware {
     public func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
         return next.respond(to: request).flatMap { res in
             if res.status.code >= HTTPResponseStatus.badRequest.code {
-                return self.handleError(for: request, status: res.status)
+                return self.handleError(for: request, status: res.status, error: Abort(res.status))
             } else {
                 return res.encodeResponse(for: request)
             }
@@ -23,34 +23,42 @@ public final class LeafErrorMiddleware: Middleware {
                         if let location = abort.headers[.location].first {
                             return request.eventLoop.future(request.redirect(to: location))
                         } else {
-                            return self.handleError(for: request, status: abort.status)
+                            return self.handleError(for: request, status: abort.status, error: error)
                         }
                 }
-                return self.handleError(for: request, status: abort.status)
+                return self.handleError(for: request, status: abort.status, error: error)
             default:
-                return self.handleError(for: request, status: .internalServerError)
+                return self.handleError(for: request, status: .internalServerError, error: error)
             }
         }
     }
     
-    private func handleError(for req: Request, status: HTTPStatus) -> EventLoopFuture<Response> {
+    private func handleError(for req: Request, status: HTTPStatus, error: Error) -> EventLoopFuture<Response> {
         if status == .notFound {
-            return req.view.render("404").encodeResponse(for: req).map { res in
+            var parameters = [String:String]()
+            if let abortError = error as? AbortError {
+                parameters["reason"] = abortError.reason
+            }
+            return req.view.render("404", parameters).encodeResponse(for: req).map { res in
                 res.status = status
                 return res
-            }.flatMapError { _ in
-                return self.renderServerErrorPage(for: status, request: req)
+            }.flatMapError { newError in
+                return self.renderServerErrorPage(for: status, request: req, error: newError)
             }
         }
         
-        return renderServerErrorPage(for: status, request: req)
+        return renderServerErrorPage(for: status, request: req, error: error)
     }
     
-    private func renderServerErrorPage(for status: HTTPStatus, request: Request) -> EventLoopFuture<Response> {
-        let parameters: [String:String] = [
+    private func renderServerErrorPage(for status: HTTPStatus, request: Request, error: Error) -> EventLoopFuture<Response> {
+        var parameters: [String:String] = [
             "status": status.code.description,
             "statusMessage": status.reasonPhrase
         ]
+        
+        if let abortError = error as? AbortError {
+            parameters["reason"] = abortError.reason
+        }
         
         request.logger.error("Internal server error. Status: \(status.code) - path: \(request.url)")
         
