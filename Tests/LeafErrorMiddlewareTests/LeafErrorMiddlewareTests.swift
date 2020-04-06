@@ -165,6 +165,26 @@ class LeafErrorMiddlewareTests: XCTestCase {
         XCTAssertEqual(response.status, .seeOther)
         XCTAssertEqual(response.headers[.location].first, "ok")
     }
+    
+    func testAddingMiddlewareToRouteGroup() throws {
+        app.shutdown()
+        app = Application(.testing, .shared(eventLoopGroup))
+        app.views.use { _ in
+            return self.viewRenderer
+        }
+        let middlewareGroup = app.grouped(LeafErrorMiddleware(environment: app.environment))
+        middlewareGroup.get("404") { req -> EventLoopFuture<Response> in
+            req.eventLoop.makeFailedFuture(Abort(.notFound))
+        }
+        middlewareGroup.get("ok") { req in
+            return "OK"
+        }
+        let validResponse = try app.getResponse(to: "ok")
+        XCTAssertEqual(validResponse.status, .ok)
+        let response = try app.getResponse(to: "404")
+        XCTAssertEqual(response.status, .notFound)
+        XCTAssertEqual(viewRenderer.leafPath, "404")
+    }
 }
 
 extension Application {
