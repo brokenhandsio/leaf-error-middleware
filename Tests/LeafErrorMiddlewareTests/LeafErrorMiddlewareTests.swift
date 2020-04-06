@@ -57,6 +57,10 @@ class LeafErrorMiddlewareTests: XCTestCase {
             router.get("future303") { req -> EventLoopFuture<Response> in
                 return req.eventLoop.future(error: Abort.redirect(to: "ok"))
             }
+            
+            router.get("future404NoAbort") { req -> EventLoopFuture<HTTPStatus> in
+                return req.eventLoop.future(.notFound)
+            }
         }
 
         try routes(app)
@@ -140,6 +144,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
     
     func testThatFuture404IsCaughtCorrectly() throws {
         let response = try app.getResponse(to: "/future404")
+        XCTAssertEqual(response.status, .notFound)
+        XCTAssertEqual(viewRenderer.leafPath, "404")
+    }
+    
+    func testFutureNonAbort404IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/future404NoAbort")
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
     }
