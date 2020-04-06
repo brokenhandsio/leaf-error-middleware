@@ -26,6 +26,9 @@ class LeafErrorMiddlewareTests: XCTestCase {
 //
 //        config.prefer(ThrowingViewRenderer.self, for: ViewRenderer.self)
 //        config.prefer(CapturingLogger.self, for: Logger.self)
+        app.views.use { _ in
+            return self.viewRenderer
+        }
 
         func routes(_ router: RoutesBuilder) throws {
 
@@ -60,15 +63,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
 
         try routes(app)
         
-        app.middleware.use(LeafErrorMiddleware(environment: .testing))
-
-//        services.register { worker in
-//            return LeafErrorMiddleware(environment: worker.environment)
-//        }
-
-//        var middlewares = MiddlewareConfig()
-//        middlewares.use(LeafErrorMiddleware.self)
-//        services.register(middlewares)
+        app.middleware.use(LeafErrorMiddleware(environment: app.environment))
     }
     
     override func tearDownWithError() throws {
