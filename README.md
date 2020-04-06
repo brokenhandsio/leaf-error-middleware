@@ -38,7 +38,7 @@ targets: [
 To use the LeafErrorMiddleware, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
 
 ```swift
-app.middleware.use(LeafErrorMiddleware(environment: app.environment))
+app.middleware.use(LeafErrorMiddleware())
 ```
 
 Make sure it appears before all other middleware to catch errors.

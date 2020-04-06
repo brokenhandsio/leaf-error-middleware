@@ -2,13 +2,8 @@ import Vapor
 
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware: Middleware {
-    /// The environment to respect when presenting errors.
-    let environment: Environment
     
-    /// Create a new ErrorMiddleware for the supplied environment.
-    public init(environment: Environment) {
-        self.environment = environment
-    }
+    public init() {}
     
     /// See `Middleware.respond`
     public func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
