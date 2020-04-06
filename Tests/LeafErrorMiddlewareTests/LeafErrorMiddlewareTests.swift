@@ -59,6 +59,8 @@ class LeafErrorMiddlewareTests: XCTestCase {
         }
 
         try routes(app)
+        
+        app.middleware.use(LeafErrorMiddleware(environment: .testing))
 
 //        services.register { worker in
 //            return LeafErrorMiddleware(environment: worker.environment)
@@ -156,21 +158,9 @@ class LeafErrorMiddlewareTests: XCTestCase {
     }
 }
 
-//extension HTTPBody {
-//    var string: String {
-//        return String(data: data!, encoding: .utf8)!
-//    }
-//}
-
 extension Application {
     func getResponse(to path: String) throws -> Response {
         let request = Request(application: self, method: .GET, url: URI(path: path), on: self.eventLoopGroup.next())
         return try self.responder.respond(to: request).wait()
     }
 }
-
-//extension Logger.Level: Equatable {
-//    public static func == (lhs: LogLevel, rhs: LogLevel) -> Bool {
-//        return lhs.description == rhs.description
-//    }
-//}
