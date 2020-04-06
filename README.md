@@ -50,7 +50,10 @@ You need to include two [Leaf](https://github.com/vapor/leaf) templates in your 
 * `404.leaf`
 * `serverError.leaf`
 
-When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed two parameters:
+When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed up to three parameters in its context:
 
 * `status` - the status code of the error caught
 * `statusMessage` - a reason for the status code
+* `reason` - the reason for the error, if known. Otherwise this won't be passed in.
+
+The `404.leaf` template will get a `reason` parameter in the context if one is known.
