@@ -19,7 +19,7 @@ public final class LeafErrorMiddleware: Middleware {
                 return res.encodeResponse(for: request)
             }
         }.flatMapError { error in
-            request.logger.warning("Error received: \(error)")
+            request.logger.report(error: error)
             switch (error) {
             case let abort as AbortError:
                 guard

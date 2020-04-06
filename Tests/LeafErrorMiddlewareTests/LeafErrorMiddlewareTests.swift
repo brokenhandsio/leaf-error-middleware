@@ -1,31 +1,25 @@
 import XCTest
 import LeafErrorMiddleware
-@testable import Vapor
+import Vapor
+@testable import Logging
 
 class LeafErrorMiddlewareTests: XCTestCase {
         
     // MARK: - Properties
     var app: Application!
     var viewRenderer: ThrowingViewRenderer!
-    var logger: CapturingLogger!
+    var logger = CapturingLogger()
     var eventLoopGroup: EventLoopGroup!
     
     // MARK: - Overrides
     override func setUpWithError() throws {
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         viewRenderer = ThrowingViewRenderer(eventLoop: eventLoopGroup.next())
-        logger = CapturingLogger()
+        LoggingSystem.bootstrapInternal { _ in
+            return self.logger
+        }
         app = Application(.testing, .shared(eventLoopGroup))
 
-//        services.register(ViewRenderer.self) { container -> ThrowingViewRenderer in
-//            return self.viewRenderer
-//        }
-//        services.register(Logger.self) { container -> CapturingLogger in
-//            return self.logger
-//        }
-//
-//        config.prefer(ThrowingViewRenderer.self, for: ViewRenderer.self)
-//        config.prefer(CapturingLogger.self, for: Logger.self)
         app.views.use { _ in
             return self.viewRenderer
         }
