@@ -29,6 +29,10 @@ class LeafErrorMiddlewareTests: XCTestCase {
             router.get("ok") { req in
                 return "ok"
             }
+            
+            router.get("404") { req -> HTTPStatus in
+                return .notFound
+            }
 
             router.get("serverError") { req -> EventLoopFuture<Response> in
                 throw Abort(.internalServerError)
@@ -126,6 +130,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
         }
         XCTAssertEqual(contextDictionary["status"], "401")
         XCTAssertEqual(contextDictionary["statusMessage"], "Unauthorized")
+    }
+    
+    func testNonAbort404IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/404")
+        XCTAssertEqual(response.status, .notFound)
+        XCTAssertEqual(viewRenderer.leafPath, "404")
     }
     
     func testThatFuture404IsCaughtCorrectly() throws {
