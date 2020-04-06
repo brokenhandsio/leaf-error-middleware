@@ -8,12 +8,14 @@ class LeafErrorMiddlewareTests: XCTestCase {
     var app: Application!
     var viewRenderer: ThrowingViewRenderer!
     var logger: CapturingLogger!
+    var eventLoopGroup: EventLoopGroup!
     
     // MARK: - Overrides
-    override func setUp() {
-        let eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
+    override func setUpWithError() throws {
+        eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         viewRenderer = ThrowingViewRenderer(eventLoop: eventLoopGroup.next())
         logger = CapturingLogger()
+        app = Application(.testing, .shared(eventLoopGroup))
 
 //        services.register(ViewRenderer.self) { container -> ThrowingViewRenderer in
 //            return self.viewRenderer
@@ -56,9 +58,7 @@ class LeafErrorMiddlewareTests: XCTestCase {
             }
         }
 
-//        let router = EngineRouter.default()
-//        try! routes(router)
-//        services.register(router, as: Router.self)
+        try routes(app)
 
 //        services.register { worker in
 //            return LeafErrorMiddleware(environment: worker.environment)
@@ -67,12 +67,11 @@ class LeafErrorMiddlewareTests: XCTestCase {
 //        var middlewares = MiddlewareConfig()
 //        middlewares.use(LeafErrorMiddleware.self)
 //        services.register(middlewares)
-//
-//        app = try! Application(config: config, services: services)
     }
     
     override func tearDownWithError() throws {
         app.shutdown()
+        try eventLoopGroup.syncShutdownGracefully()
     }
     
     // MARK: - Tests
@@ -165,11 +164,8 @@ class LeafErrorMiddlewareTests: XCTestCase {
 
 extension Application {
     func getResponse(to path: String) throws -> Response {
-//        let responder = try self.make(Responder.self)
-//        let request = HTTPRequest(method: .GET, url: URL(string: path)!)
-//        let wrappedRequest = Request(http: request, using: self)
-//        return try responder.respond(to: wrappedRequest).wait()
-        fatalError()
+        let request = Request(application: self, method: .GET, url: URI(path: path), on: self.eventLoopGroup.next())
+        return try self.responder.respond(to: request).wait()
     }
 }
 
