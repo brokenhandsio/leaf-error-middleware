@@ -27,12 +27,13 @@ First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     // ...,
-    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "2.0.0")
+    .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "2.0.0")
 ],
 targets: [
-    .target(name: "App", dependencies: ["Vapor", ..., "LeafErrorMiddleware"]),
-    // ...
-]
+.target(name: "App", dependencies: [
+    .product(name: "LeafErrorMiddleware", package: "leaf-error-middleware"),
+    // ...,
+]),
 ```
 
 To use the LeafErrorMiddleware, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
