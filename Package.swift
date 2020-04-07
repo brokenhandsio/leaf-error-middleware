@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "LeafErrorMiddleware",
+    name: "leaf-error-middleware",
     platforms: [
        .macOS(.v10_15),
     ],
