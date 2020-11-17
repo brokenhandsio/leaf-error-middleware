@@ -3,7 +3,7 @@
     <br>
     <br>
     <a href="https://swift.org">
-        <img src="http://img.shields.io/badge/Swift-4.1-brightgreen.svg" alt="Language">
+        <img src="http://img.shields.io/badge/Swift-5.2-brightgreen.svg" alt="Language">
     </a>
     <a href="https://github.com/brokenhandsio/leaf-error-middleware/actions">
         <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=master" alt="Build Status">
@@ -27,7 +27,7 @@ First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     // ...,
-    .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "1.0.0")
+    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "2.0.0")
 ],
 targets: [
     .target(name: "App", dependencies: ["Vapor", ..., "LeafErrorMiddleware"]),
@@ -35,27 +35,13 @@ targets: [
 ]
 ```
 
-To use the LeafErrorMiddleware, register the middleware service in `configure.swift` (make sure you `import LeafErrorMiddleware` at the top):
+To use the LeafErrorMiddleware, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
 
 ```swift
-// You must set the preferred renderer:
-config.prefer(LeafRenderer.self, for: ViewRenderer.self)
-
-services.register { worker in
-    return try LeafErrorMiddleware(environment: worker.environment)
-}
+app.middleware.use(LeafErrorMiddleware())
 ```
 
-Then add it to your `MiddlewareConfig`:
-
-```swift
-var middlewares = MiddlewareConfig()
-middlewares.use(LeafErrorMiddleware.self)
-// ...
-services.register(middlewares)
-```
-
-This replaces the default error middleware in Vapor, so ***do not*** add the default `ErrorMiddleware` to your `MiddlewareConfig`.
+Make sure it appears before all other middleware to catch errors.
 
 # Setting Up
 
@@ -64,7 +50,10 @@ You need to include two [Leaf](https://github.com/vapor/leaf) templates in your 
 * `404.leaf`
 * `serverError.leaf`
 
-When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed two parameters:
+When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed up to three parameters in its context:
 
 * `status` - the status code of the error caught
 * `statusMessage` - a reason for the status code
+* `reason` - the reason for the error, if known. Otherwise this won't be passed in.
+
+The `404.leaf` template will get a `reason` parameter in the context if one is known.

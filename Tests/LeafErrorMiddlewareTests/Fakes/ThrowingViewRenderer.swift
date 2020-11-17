@@ -1,23 +1,30 @@
 import Vapor
 
-class ThrowingViewRenderer: ViewRenderer, Service {
+class ThrowingViewRenderer: ViewRenderer {
 
     var shouldCache = false
-    var worker: Worker
+    var eventLoop: EventLoop
     var shouldThrow = false
 
-    init(worker: Worker) {
-        self.worker = worker
+    init(eventLoop: EventLoop) {
+        self.eventLoop = eventLoop
     }
 
     private(set) var capturedContext: Encodable? = nil
     private(set) var leafPath: String? = nil
-    func render<E>(_ path: String, _ context: E, userInfo: [AnyHashable : Any]) -> EventLoopFuture<View> where E : Encodable {
+    func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View> where E : Encodable {
         self.capturedContext = context
-        self.leafPath = path
+        self.leafPath = name
         if shouldThrow {
-            return Future.map(on: worker) { throw TestError() }
+            return self.eventLoop.makeFailedFuture(TestError())
         }
-        return Future.map(on: worker) { return View(data: "Test".convertToData()) }
+        let response = "Test"
+        var byteBuffer = ByteBufferAllocator().buffer(capacity: response.count)
+        byteBuffer.writeString(response)
+        return self.eventLoop.future(View(data: byteBuffer))
+    }
+    
+    func `for`(_ request: Request) -> ViewRenderer {
+        return self
     }
 }
