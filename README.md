@@ -6,12 +6,12 @@
         <img src="http://img.shields.io/badge/Swift-5.2-brightgreen.svg" alt="Language">
     </a>
     <a href="https://github.com/brokenhandsio/leaf-error-middleware/actions">
-        <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=master" alt="Build Status">
+        <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=main" alt="Build Status">
     </a>
     <a href="https://codecov.io/gh/brokenhandsio/leaf-error-middleware">
-        <img src="https://codecov.io/gh/brokenhandsio/leaf-error-middleware/branch/master/graph/badge.svg" alt="Code Coverage">
+        <img src="https://codecov.io/gh/brokenhandsio/leaf-error-middleware/branch/main/graph/badge.svg" alt="Code Coverage">
     </a>
-    <a href="https://raw.githubusercontent.com/brokenhandsio/leaf-error-middleware/master/LICENSE">
+    <a href="https://raw.githubusercontent.com/brokenhandsio/leaf-error-middleware/main/LICENSE">
         <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License">
     </a>
 </p>
