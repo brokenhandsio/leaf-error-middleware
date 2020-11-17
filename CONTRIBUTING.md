@@ -6,7 +6,7 @@ We ask that you follow a few guidelines when contributing to one of our projects
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [Broken Hands Code of Conduct](https://github.com/brokenhandsio/leaf-error-middleware/blob/master/CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [support@brokenhands.io](mailto:support@brokenhandsio).
+This project and everyone participating in it is governed by the [Broken Hands Code of Conduct](https://github.com/brokenhandsio/leaf-error-middleware/blob/main/CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to [support@brokenhands.io](mailto:support@brokenhandsio).
 
 # How Can I Contribute?
 
