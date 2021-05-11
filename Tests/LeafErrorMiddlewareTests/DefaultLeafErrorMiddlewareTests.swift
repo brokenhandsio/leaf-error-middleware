@@ -3,7 +3,7 @@ import LeafErrorMiddleware
 import Vapor
 @testable import Logging
 
-class LeafErrorMiddlewareTests: XCTestCase {
+class DefaultLeafErrorMiddlewareTests: XCTestCase {
         
     // MARK: - Properties
     var app: Application!
