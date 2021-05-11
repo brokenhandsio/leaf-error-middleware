@@ -171,7 +171,7 @@ class CustomGeneratorTests: XCTestCase {
 
     func testContextGeneratedOn404Page() throws {
         let response = try app.getResponse(to: "/404")
-        XCTAssertEqual(response.status, .unauthorized)
+        XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
         let context = try XCTUnwrap(viewRenderer.capturedContext as? AContext)
         XCTAssertTrue(context.trigger)
@@ -183,6 +183,35 @@ class CustomGeneratorTests: XCTestCase {
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
         let context = try XCTUnwrap(viewRenderer.capturedContext as? AContext)
         XCTAssertTrue(context.trigger)
+    }
+
+    func testGetAResponseWhenGenerator() throws {
+        app.shutdown()
+        app = Application(.testing, .shared(eventLoopGroup))
+        app.views.use { _ in
+            return self.viewRenderer
+        }
+        let leafErrorMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFuture<AContext> in
+            return req.eventLoop.future(error: Abort(.internalServerError))
+
+        }
+        app.middleware = .init()
+        app.middleware.use(leafErrorMiddleware)
+
+        app.get("404") { req -> EventLoopFuture<Response> in
+            req.eventLoop.makeFailedFuture(Abort(.notFound))
+        }
+        app.get("500") { req -> EventLoopFuture<Response> in
+            req.eventLoop.makeFailedFuture(Abort(.internalServerError))
+        }
+
+        let response404 = try app.getResponse(to: "404")
+        XCTAssertEqual(response404.status, .notFound)
+        XCTAssertNil(viewRenderer.leafPath)
+
+        let response500 = try app.getResponse(to: "500")
+        XCTAssertEqual(response500.status, .internalServerError)
+        XCTAssertNil(viewRenderer.leafPath)
     }
 
 
