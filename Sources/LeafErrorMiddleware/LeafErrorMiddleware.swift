@@ -1,28 +1,5 @@
 import Vapor
 
-public struct DefaultContext: Encodable {
-    public let status: String?
-    public let statusMessage: String?
-    public let reason: String?
-}
-
-public enum LeafErorrMiddlewareDefaultGenerator {
-    static func generate(_ status: HTTPStatus, _ error: Error, _ req: Request) -> EventLoopFuture<DefaultContext> {
-        let reason: String?
-        if let abortError = error as? AbortError {
-            reason = abortError.reason
-        } else {
-            reason = nil
-        }
-        let context = DefaultContext(status: status.code.description, statusMessage: status.reasonPhrase, reason: reason)
-        return req.eventLoop.future(context )
-    }
-
-    public static func build() -> LeafErrorMiddleware<DefaultContext> {
-        LeafErrorMiddleware(contextGenerator: generate)
-    }
-}
-
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware<T: Encodable>: Middleware {
 
