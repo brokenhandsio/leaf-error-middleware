@@ -27,7 +27,7 @@ First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     // ...,
-    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "2.0.0")
+    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "3.0.0")
 ],
 targets: [
     .target(name: "App", dependencies: ["Vapor", ..., "LeafErrorMiddleware"]),
@@ -35,13 +35,34 @@ targets: [
 ]
 ```
 
-To use the LeafErrorMiddleware, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
+## Default Context
+
+To use the LeafErrorMiddleware with the default context passed to templates, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
 
 ```swift
-app.middleware.use(LeafErrorMiddleware())
+app.middleware.use(LeafErorrMiddlewareDefaultGenerator.build())
 ```
 
 Make sure it appears before all other middleware to catch errors.
+
+## Custom Context
+
+Leaf Error Middleware allows you to pass a closure to `LeafErrorMiddleware` to generate a custom context for the error middleware. This is useful if you want to be able to tell if a user is logged in on a 404 page for instance.
+
+Register the middleware as follows:
+
+```swift
+let leafMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFuture<SomeContext> in
+    return req.eventLoop.future(SomeContext())
+}
+app.middleware.use(leafMiddleware)
+```
+
+The closure recevies three parameters:
+
+* `HTTPStatus` - the status code of the response returned.
+* `Error` - the error caught to be handled.
+* `Request` - the request currently being handled. This can be used to log information, make external API calls or check the session.
 
 # Setting Up
 
@@ -50,7 +71,11 @@ You need to include two [Leaf](https://github.com/vapor/leaf) templates in your 
 * `404.leaf`
 * `serverError.leaf`
 
-When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. The `serverError.leaf` template will be passed up to three parameters in its context:
+When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. 
+
+## Default Context
+
+If using the default context, the `serverError.leaf` template will be passed up to three parameters in its context:
 
 * `status` - the status code of the error caught
 * `statusMessage` - a reason for the status code

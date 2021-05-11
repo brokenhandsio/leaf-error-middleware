@@ -1,9 +1,13 @@
 import Vapor
 
 /// Captures all errors and transforms them into an internal server error.
-public final class LeafErrorMiddleware: Middleware {
-    
-    public init() {}
+public final class LeafErrorMiddleware<T: Encodable>: Middleware {
+
+    let contextGenerator: ((HTTPStatus, Error, Request) -> EventLoopFuture<T>)
+
+    public init(contextGenerator: @escaping ((HTTPStatus, Error, Request) -> EventLoopFuture<T>)) {
+        self.contextGenerator = contextGenerator
+    }
     
     /// See `Middleware.respond`
     public func respond(to request: Request, chainingTo next: Responder) -> EventLoopFuture<Response> {
@@ -35,37 +39,26 @@ public final class LeafErrorMiddleware: Middleware {
     
     private func handleError(for req: Request, status: HTTPStatus, error: Error) -> EventLoopFuture<Response> {
         if status == .notFound {
-            var parameters = [String:String]()
-            if let abortError = error as? AbortError {
-                parameters["reason"] = abortError.reason
-            }
-            return req.view.render("404", parameters).encodeResponse(for: req).map { res in
-                res.status = status
-                return res
+            return contextGenerator(status, error, req).flatMap { context in
+                return req.view.render("404", context).encodeResponse(for: req).map { res in
+                    res.status = status
+                    return res
+                }
             }.flatMapError { newError in
                 return self.renderServerErrorPage(for: status, request: req, error: newError)
             }
         }
-        
         return renderServerErrorPage(for: status, request: req, error: error)
     }
     
     private func renderServerErrorPage(for status: HTTPStatus, request: Request, error: Error) -> EventLoopFuture<Response> {
-        var parameters: [String:String] = [
-            "status": status.code.description,
-            "statusMessage": status.reasonPhrase
-        ]
-        
-        if let abortError = error as? AbortError {
-            parameters["reason"] = abortError.reason
-        }
-        
-        request.logger.error("Internal server error. Status: \(status.code) - path: \(request.url)")
-        
-        return request.view.render("serverError", parameters).encodeResponse(for: request).map { res in
-            res.status = status
-            return res
-        }.flatMapError { error -> EventLoopFuture<Response> in
+        return contextGenerator(status, error, request).flatMap { context in
+                request.logger.error("Internal server error. Status: \(status.code) - path: \(request.url)")
+                return request.view.render("serverError", context).encodeResponse(for: request).map { res in
+                    res.status = status
+                    return res
+                }
+            }.flatMapError { error -> EventLoopFuture<Response> in
             let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
             request.logger.error("Failed to render custom error page - \(error)")
             return body.encodeResponse(for: request).map { res in
