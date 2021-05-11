@@ -1,9 +1,9 @@
 import Vapor
 
 public struct DefaultContext: Encodable {
-    let status: String?
-    let statusMessage: String?
-    let reason: String?
+    public let status: String?
+    public let statusMessage: String?
+    public let reason: String?
 }
 
 public enum LeafErorrMiddlewareDefaultGenerator {

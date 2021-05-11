@@ -136,12 +136,12 @@ class LeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/unauthorized")
         XCTAssertEqual(response.status, .unauthorized)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
-        guard let contextDictionary = viewRenderer.capturedContext as? [String: String] else {
+        guard let context = viewRenderer.capturedContext as? DefaultContext else {
             XCTFail()
             return
         }
-        XCTAssertEqual(contextDictionary["status"], "401")
-        XCTAssertEqual(contextDictionary["statusMessage"], "Unauthorized")
+        XCTAssertEqual(context.status, "401")
+        XCTAssertEqual(context.statusMessage, "Unauthorized")
     }
     
     func testNonAbort404IsCaughtCorrectly() throws {
@@ -198,22 +198,22 @@ class LeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/404withReason")
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
-        guard let contextDictionary = viewRenderer.capturedContext as? [String: String] else {
+        guard let context = viewRenderer.capturedContext as? DefaultContext else {
             XCTFail()
             return
         }
-        XCTAssertEqual(contextDictionary["reason"], "Could not find it")
+        XCTAssertEqual(context.reason, "Could not find it")
     }
     
     func testReasonIsPassedThroughTo500Page() throws {
         let response = try app.getResponse(to: "/500withReason")
         XCTAssertEqual(response.status, .badGateway)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
-        guard let contextDictionary = viewRenderer.capturedContext as? [String: String] else {
+        guard let context = viewRenderer.capturedContext as? DefaultContext else {
             XCTFail()
             return
         }
-        XCTAssertEqual(contextDictionary["reason"], "I messed up")
+        XCTAssertEqual(context.reason, "I messed up")
     }
 }
 
