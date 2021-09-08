@@ -73,7 +73,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
 
         try routes(app)
         
-        app.middleware.use(LeafErorrMiddlewareDefaultGenerator.build())
+        app.middleware.use(LeafErrorMiddlewareDefaultGenerator.build())
     }
     
     override func tearDownWithError() throws {
@@ -180,7 +180,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
         app.views.use { _ in
             return self.viewRenderer
         }
-        let middlewareGroup = app.grouped(LeafErorrMiddlewareDefaultGenerator.build())
+        let middlewareGroup = app.grouped(LeafErrorMiddlewareDefaultGenerator.build())
         middlewareGroup.get("404") { req -> EventLoopFuture<Response> in
             req.eventLoop.makeFailedFuture(Abort(.notFound))
         }

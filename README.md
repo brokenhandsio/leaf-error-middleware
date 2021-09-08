@@ -40,7 +40,7 @@ targets: [
 To use the LeafErrorMiddleware with the default context passed to templates, register the middleware service in `configure.swift` to your `Application`'s middleware (make sure you `import LeafErrorMiddleware` at the top):
 
 ```swift
-app.middleware.use(LeafErorrMiddlewareDefaultGenerator.build())
+app.middleware.use(LeafErrorMiddlewareDefaultGenerator.build())
 ```
 
 Make sure it appears before all other middleware to catch errors.
@@ -58,7 +58,7 @@ let leafMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFutu
 app.middleware.use(leafMiddleware)
 ```
 
-The closure recevies three parameters:
+The closure receives three parameters:
 
 * `HTTPStatus` - the status code of the response returned.
 * `Error` - the error caught to be handled.
