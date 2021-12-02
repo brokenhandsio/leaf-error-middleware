@@ -1,7 +1,6 @@
 import Vapor
 
 class ThrowingViewRenderer: ViewRenderer {
-
     var shouldCache = false
     var eventLoop: EventLoop
     var shouldThrow = false
@@ -10,12 +9,12 @@ class ThrowingViewRenderer: ViewRenderer {
         self.eventLoop = eventLoop
     }
 
-    private(set) var capturedContext: Encodable? = nil
-    private(set) var leafPath: String? = nil
-    func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View> where E : Encodable {
+    private(set) var capturedContext: Encodable?
+    private(set) var leafPath: String?
+    func render<E>(_ name: String, _ context: E) -> EventLoopFuture<View> where E: Encodable {
         self.capturedContext = context
         self.leafPath = name
-        if shouldThrow {
+        if self.shouldThrow {
             return self.eventLoop.makeFailedFuture(TestError())
         }
         let response = "Test"
@@ -23,7 +22,7 @@ class ThrowingViewRenderer: ViewRenderer {
         byteBuffer.writeString(response)
         return self.eventLoop.future(View(data: byteBuffer))
     }
-    
+
     func `for`(_ request: Request) -> ViewRenderer {
         return self
     }
