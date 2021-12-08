@@ -3,10 +3,18 @@ import Vapor
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware<T: Encodable>: Middleware {
 
-    let contextGenerator: ((HTTPStatus, Error, Request) -> EventLoopFuture<T>)
+    public enum ErrorType: Int {
+        case all
+        case notFound
+        case serverError
+    }
 
-    public init(contextGenerator: @escaping ((HTTPStatus, Error, Request) -> EventLoopFuture<T>)) {
+    let contextGenerator: ((HTTPStatus, Error, Request) -> EventLoopFuture<T>)
+    let errorType: ErrorType    
+
+    public init(contextGenerator: @escaping ((HTTPStatus, Error, Request) -> EventLoopFuture<T>), errorType: ErrorType = .all) {
         self.contextGenerator = contextGenerator
+        self.errorType = errorType
     }
     
     /// See `Middleware.respond`
@@ -34,11 +42,13 @@ public final class LeafErrorMiddleware<T: Encodable>: Middleware {
             default:
                 return self.handleError(for: request, status: .internalServerError, error: error)
             }
+        }.flatMapError { error in
+            return next.respond(to: request)
         }
     }
     
     private func handleError(for req: Request, status: HTTPStatus, error: Error) -> EventLoopFuture<Response> {
-        if status == .notFound {
+        if (self.errorType == .all || self.errorType == .notFound) && status == .notFound {
             return contextGenerator(status, error, req).flatMap { context in
                 return req.view.render("404", context).encodeResponse(for: req).map { res in
                     res.status = status
@@ -47,8 +57,10 @@ public final class LeafErrorMiddleware<T: Encodable>: Middleware {
             }.flatMapError { newError in
                 return self.renderServerErrorPage(for: status, request: req, error: newError)
             }
+        } else if self.errorType == .all || self.errorType == .serverError {
+            return renderServerErrorPage(for: status, request: req, error: error)
         }
-        return renderServerErrorPage(for: status, request: req, error: error)
+        return req.eventLoop.makeFailedFuture(error)
     }
     
     private func renderServerErrorPage(for status: HTTPStatus, request: Request, error: Error) -> EventLoopFuture<Response> {
@@ -58,7 +70,7 @@ public final class LeafErrorMiddleware<T: Encodable>: Middleware {
                     res.status = status
                     return res
                 }
-            }.flatMapError { error -> EventLoopFuture<Response> in
+        }.flatMapError { error -> EventLoopFuture<Response> in
             let body = "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>"
             request.logger.error("Failed to render custom error page - \(error)")
             return body.encodeResponse(for: request).map { res in
