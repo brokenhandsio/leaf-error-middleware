@@ -31,7 +31,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
             }
 
             router.get("404") { _ -> HTTPStatus in
-                .notFound
+                throw Abort(.notFound)
             }
 
             router.get("serverError") { _ -> Response in
@@ -44,6 +44,10 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
 
             router.get("unauthorized") { _ -> Response in
                 throw Abort(.unauthorized)
+            }
+
+            router.get("303") { _ -> Response in
+                throw Abort.redirect(to: "ok")
             }
 
             router.get("404withReason") { _ -> HTTPStatus in
@@ -66,6 +70,12 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
     }
 
     // MARK: - Tests
+
+    func testThatRedirectIsNotCaught() throws {
+        let response = try app.getResponse(to: "/303")
+        XCTAssertEqual(response.status, .seeOther)
+        XCTAssertEqual(response.headers[.location].first, "ok")
+    }
 
     func testThatValidEndpointWorks() throws {
         let response = try app.getResponse(to: "/ok")

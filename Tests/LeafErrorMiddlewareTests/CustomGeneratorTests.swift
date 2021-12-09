@@ -50,6 +50,10 @@ class CustomGeneratorTests: XCTestCase {
                 throw Abort(.unauthorized)
             }
 
+            router.get("303") { _ -> Response in
+                throw Abort.redirect(to: "ok")
+            }
+
             router.get("404withReason") { _ -> HTTPStatus in
                 throw Abort(.notFound, reason: "Could not find it")
             }
@@ -121,6 +125,12 @@ class CustomGeneratorTests: XCTestCase {
         let response = try app.getResponse(to: "/unknownError")
         XCTAssertEqual(response.status, .internalServerError)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
+    }
+
+    func testThatRedirectIsNotCaught() throws {
+        let response = try app.getResponse(to: "/303")
+        XCTAssertEqual(response.status, .seeOther)
+        XCTAssertEqual(response.headers[.location].first, "ok")
     }
 
     func testNonAbort404IsCaughtCorrectly() throws {
