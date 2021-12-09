@@ -1,17 +1,22 @@
 name: CI
 on:
-- push
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 jobs:
   xenial:
     container: 
-      image: swift:5.2-xenial
+      image: swift:5.5-xenial
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - run: swift test --enable-test-discovery --enable-code-coverage
   bionic:
     container: 
-      image: swift:5.4-bionic
+      image: swift:5.5-bionic
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
