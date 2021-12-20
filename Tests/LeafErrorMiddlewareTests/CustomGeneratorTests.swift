@@ -1,84 +1,76 @@
-import XCTest
 import LeafErrorMiddleware
-import Vapor
 @testable import Logging
+import Vapor
+import XCTest
 
 struct AContext: Encodable {
     let trigger: Bool
 }
 
 class CustomGeneratorTests: XCTestCase {
-
     // MARK: - Properties
+
     var app: Application!
     var viewRenderer: ThrowingViewRenderer!
     var logger = CapturingLogger()
     var eventLoopGroup: EventLoopGroup!
 
     // MARK: - Overrides
+
     override func setUpWithError() throws {
         eventLoopGroup = MultiThreadedEventLoopGroup(numberOfThreads: 1)
         viewRenderer = ThrowingViewRenderer(eventLoop: eventLoopGroup.next())
         LoggingSystem.bootstrapInternal { _ in
-            return self.logger
+            self.logger
         }
         app = Application(.testing, .shared(eventLoopGroup))
 
         app.views.use { _ in
-            return self.viewRenderer
+            self.viewRenderer
         }
 
         func routes(_ router: RoutesBuilder) throws {
-
-            router.get("ok") { req in
-                return "ok"
+            router.get("ok") { _ in
+                "ok"
             }
 
-            router.get("404") { req -> HTTPStatus in
-                return .notFound
+            router.get("404") { _ -> HTTPStatus in
+                .notFound
             }
 
-            router.get("serverError") { req -> EventLoopFuture<Response> in
+            router.get("403") { _ -> Response in
+                throw Abort(.forbidden)
+            }
+
+            router.get("serverError") { _ -> Response in
                 throw Abort(.internalServerError)
             }
 
-            router.get("unknownError") { req -> EventLoopFuture<Response> in
+            router.get("unknownError") { _ -> Response in
                 throw TestError()
             }
 
-            router.get("unauthorized") { req -> EventLoopFuture<Response> in
+            router.get("unauthorized") { _ -> Response in
                 throw Abort(.unauthorized)
             }
 
-            router.get("future404") { req -> EventLoopFuture<Response> in
-                return req.eventLoop.future(error: Abort(.notFound))
+            router.get("303") { _ -> Response in
+                throw Abort.redirect(to: "ok")
             }
 
-            router.get("future403") { req -> EventLoopFuture<Response> in
-                return req.eventLoop.future(error: Abort(.forbidden))
-            }
-
-            router.get("future303") { req -> EventLoopFuture<Response> in
-                return req.eventLoop.future(error: Abort.redirect(to: "ok"))
-            }
-
-            router.get("future404NoAbort") { req -> EventLoopFuture<HTTPStatus> in
-                return req.eventLoop.future(.notFound)
-            }
-
-            router.get("404withReason") { req -> HTTPStatus in
+            router.get("404withReason") { _ -> HTTPStatus in
                 throw Abort(.notFound, reason: "Could not find it")
             }
 
-            router.get("500withReason") { req -> HTTPStatus in
+            router.get("500withReason") { _ -> HTTPStatus in
                 throw Abort(.badGateway, reason: "I messed up")
             }
         }
 
         try routes(app)
 
-        let leafMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFuture<AContext> in
-            return req.eventLoop.future(AContext(trigger: true))
+        let leafMiddleware = LeafErrorMiddleware { status, error, req async throws -> AContext in
+            AContext(trigger: true)
         }
         app.middleware.use(leafMiddleware)
     }
@@ -139,34 +131,22 @@ class CustomGeneratorTests: XCTestCase {
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 
+    func testThatRedirectIsNotCaught() throws {
+        let response = try app.getResponse(to: "/303")
+        XCTAssertEqual(response.status, .seeOther)
+        XCTAssertEqual(response.headers[.location].first, "ok")
+    }
+
     func testNonAbort404IsCaughtCorrectly() throws {
         let response = try app.getResponse(to: "/404")
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
     }
 
-    func testThatFuture404IsCaughtCorrectly() throws {
-        let response = try app.getResponse(to: "/future404")
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(viewRenderer.leafPath, "404")
-    }
-
-    func testFutureNonAbort404IsCaughtCorrectly() throws {
-        let response = try app.getResponse(to: "/future404NoAbort")
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(viewRenderer.leafPath, "404")
-    }
-
-    func testThatFuture403IsCaughtCorrectly() throws {
-        let response = try app.getResponse(to: "/future403")
+    func testThat403IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/403")
         XCTAssertEqual(response.status, .forbidden)
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
-    }
-
-    func testThatRedirectIsNotCaught() throws {
-        let response = try app.getResponse(to: "/future303")
-        XCTAssertEqual(response.status, .seeOther)
-        XCTAssertEqual(response.headers[.location].first, "ok")
     }
 
     func testContextGeneratedOn404Page() throws {
@@ -189,20 +169,19 @@ class CustomGeneratorTests: XCTestCase {
         app.shutdown()
         app = Application(.testing, .shared(eventLoopGroup))
         app.views.use { _ in
-            return self.viewRenderer
+            self.viewRenderer
         }
-        let leafErrorMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFuture<AContext> in
-            return req.eventLoop.future(error: Abort(.internalServerError))
-
+        let leafErrorMiddleware = LeafErrorMiddleware { _, _, _ -> AContext in
+            throw Abort(.internalServerError)
         }
         app.middleware = .init()
         app.middleware.use(leafErrorMiddleware)
 
-        app.get("404") { req -> EventLoopFuture<Response> in
-            req.eventLoop.makeFailedFuture(Abort(.notFound))
+        app.get("404") { _ async throws -> Response in
+            throw Abort(.notFound)
         }
-        app.get("500") { req -> EventLoopFuture<Response> in
-            req.eventLoop.makeFailedFuture(Abort(.internalServerError))
+        app.get("500") { _ async throws -> Response in
+            throw Abort(.internalServerError)
         }
 
         let response404 = try app.getResponse(to: "404")
@@ -213,6 +192,4 @@ class CustomGeneratorTests: XCTestCase {
         XCTAssertEqual(response500.status, .internalServerError)
         XCTAssertNil(viewRenderer.leafPath)
     }
-
-
 }

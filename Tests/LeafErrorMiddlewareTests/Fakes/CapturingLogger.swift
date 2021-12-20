@@ -1,7 +1,6 @@
 import Vapor
 
 class CapturingLogger: LogHandler {
-    
     subscript(metadataKey key: String) -> Logger.Metadata.Value? {
         get { return self.metadata[key] }
         set { self.metadata[key] = newValue }
