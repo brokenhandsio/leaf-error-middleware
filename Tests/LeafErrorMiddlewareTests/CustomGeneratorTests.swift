@@ -38,6 +38,10 @@ class CustomGeneratorTests: XCTestCase {
                 .notFound
             }
 
+            router.get("403") { _ -> Response in
+                throw Abort(.forbidden)
+            }
+
             router.get("serverError") { _ -> Response in
                 throw Abort(.internalServerError)
             }
@@ -137,6 +141,12 @@ class CustomGeneratorTests: XCTestCase {
         let response = try app.getResponse(to: "/404")
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
+    }
+
+    func testThat403IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/403")
+        XCTAssertEqual(response.status, .forbidden)
+        XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 
     func testContextGeneratedOn404Page() throws {

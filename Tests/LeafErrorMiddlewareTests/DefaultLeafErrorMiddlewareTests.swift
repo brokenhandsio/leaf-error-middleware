@@ -34,6 +34,10 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
                 throw Abort(.notFound)
             }
 
+            router.get("403") { _ -> Response in
+                throw Abort(.forbidden)
+            }
+
             router.get("serverError") { _ -> Response in
                 throw Abort(.internalServerError)
             }
@@ -142,6 +146,12 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/404")
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
+    }
+
+    func testThat403IsCaughtCorrectly() throws {
+        let response = try app.getResponse(to: "/403")
+        XCTAssertEqual(response.status, .forbidden)
+        XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 
     func testAddingMiddlewareToRouteGroup() throws {
