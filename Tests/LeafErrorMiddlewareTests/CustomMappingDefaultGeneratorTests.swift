@@ -3,7 +3,7 @@ import LeafErrorMiddleware
 import Vapor
 import XCTest
 
-class DefaultLeafErrorMiddlewareTests: XCTestCase {
+class CustomMappingDefaultGeneratorTests: XCTestCase {
     // MARK: - Properties
 
     var app: Application!
@@ -26,16 +26,17 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
         }
 
         func routes(_ router: RoutesBuilder) throws {
-            router.get("ok") { _ in
-                "ok"
-            }
-
+            
             router.get("404") { _ -> HTTPStatus in
                 throw Abort(.notFound)
             }
 
             router.get("403") { _ -> Response in
                 throw Abort(.forbidden)
+            }
+            
+            router.get("303") { _ -> Response in
+                throw Abort.redirect(to: "ok")
             }
 
             router.get("serverError") { _ -> Response in
@@ -50,22 +51,21 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
                 throw Abort(.unauthorized)
             }
 
-            router.get("303") { _ -> Response in
-                throw Abort.redirect(to: "ok")
+            router.get("401withReason") { _ -> HTTPStatus in
+                throw Abort(.unauthorized, reason: "You need to log in")
             }
 
-            router.get("404withReason") { _ -> HTTPStatus in
-                throw Abort(.notFound, reason: "Could not find it")
-            }
-
-            router.get("500withReason") { _ -> HTTPStatus in
-                throw Abort(.badGateway, reason: "I messed up")
-            }
         }
 
         try routes(app)
 
-        app.middleware.use(LeafErrorMiddlewareDefaultGenerator.build())
+        app.middleware.use(LeafErrorMiddlewareDefaultGenerator.build(errorMappings: [
+            .notFound: "404",
+            .unauthorized: "401",
+            .forbidden: "403",
+            // Verify that non-error mappings are ignored
+            .seeOther: "303"
+        ]))
     }
 
     override func tearDownWithError() throws {
@@ -79,43 +79,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
         let response = try app.getResponse(to: "/303")
         XCTAssertEqual(response.status, .seeOther)
         XCTAssertEqual(response.headers[.location].first, "ok")
-    }
-
-    func testThatValidEndpointWorks() throws {
-        let response = try app.getResponse(to: "/ok")
-        XCTAssertEqual(response.status, .ok)
-    }
-
-    func testThatRequestingInvalidEndpointReturns404View() throws {
-        let response = try app.getResponse(to: "/unknown")
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(viewRenderer.leafPath, "404")
-    }
-
-    func testThatRequestingPageThatCausesAServerErrorReturnsServerErrorView() throws {
-        let response = try app.getResponse(to: "/serverError")
-        XCTAssertEqual(response.status, .internalServerError)
-        XCTAssertEqual(viewRenderer.leafPath, "serverError")
-    }
-
-    func testThatErrorGetsLogged() throws {
-        _ = try app.getResponse(to: "/serverError")
-        XCTAssertNotNil(logger.message)
-        XCTAssertEqual(logger.logLevelUsed, .error)
-    }
-
-    func testThatMiddlewareFallsBackIfViewRendererFails() throws {
-        viewRenderer.shouldThrow = true
-        let response = try app.getResponse(to: "/serverError")
-        XCTAssertEqual(response.status, .internalServerError)
-        XCTAssertEqual(response.body.string, "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
-    }
-
-    func testThatMiddlewareFallsBackIfViewRendererFailsFor404() throws {
-        viewRenderer.shouldThrow = true
-        let response = try app.getResponse(to: "/unknown")
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(response.body.string, "<h1>Internal Error</h1><p>There was an internal error. Please try again later.</p>")
+        XCTAssertNotEqual(viewRenderer.leafPath, "303")
     }
 
     func testMessageLoggedIfRendererThrows() throws {
@@ -133,7 +97,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
     func testThatUnauthorisedIsPassedThroughToServerErrorPage() throws {
         let response = try app.getResponse(to: "/unauthorized")
         XCTAssertEqual(response.status, .unauthorized)
-        XCTAssertEqual(viewRenderer.leafPath, "serverError")
+        XCTAssertEqual(viewRenderer.leafPath, "401")
         guard let context = viewRenderer.capturedContext as? DefaultContext else {
             XCTFail()
             return
@@ -151,7 +115,7 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
     func testThat403IsCaughtCorrectly() throws {
         let response = try app.getResponse(to: "/403")
         XCTAssertEqual(response.status, .forbidden)
-        XCTAssertEqual(viewRenderer.leafPath, "serverError")
+        XCTAssertEqual(viewRenderer.leafPath, "403")
     }
 
     func testAddingMiddlewareToRouteGroup() throws {
@@ -173,33 +137,16 @@ class DefaultLeafErrorMiddlewareTests: XCTestCase {
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(viewRenderer.leafPath, "404")
     }
-
-    func testReasonIsPassedThroughTo404Page() throws {
-        let response = try app.getResponse(to: "/404withReason")
-        XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(viewRenderer.leafPath, "404")
+    
+    func testReasonIsPassedThroughTo401Page() throws {
+        let response = try app.getResponse(to: "/401withReason")
+        XCTAssertEqual(response.status, .unauthorized)
+        XCTAssertEqual(viewRenderer.leafPath, "401")
         guard let context = viewRenderer.capturedContext as? DefaultContext else {
             XCTFail()
             return
         }
-        XCTAssertEqual(context.reason, "Could not find it")
-    }
-
-    func testReasonIsPassedThroughTo500Page() throws {
-        let response = try app.getResponse(to: "/500withReason")
-        XCTAssertEqual(response.status, .badGateway)
-        XCTAssertEqual(viewRenderer.leafPath, "serverError")
-        guard let context = viewRenderer.capturedContext as? DefaultContext else {
-            XCTFail()
-            return
-        }
-        XCTAssertEqual(context.reason, "I messed up")
+        XCTAssertEqual(context.reason, "You need to log in")
     }
 }
 
-extension Application {
-    func getResponse(to path: String) throws -> Response {
-        let request = Request(application: self, method: .GET, url: URI(path: path), on: eventLoopGroup.next())
-        return try responder.respond(to: request).wait()
-    }
-}
