@@ -27,17 +27,10 @@ First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     // ...,
-    .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "4.0.0")
+    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "3.0.0")
 ],
 targets: [
-    .target(
-        name: "App", 
-        dependencies: [
-        .product(name: "Vapor", package: "vapor"), 
-        ..., 
-        .product(name: "LeafErrorMiddleware", package: "leaf-error-middleware")
-        ]
-    ),
+    .target(name: "App", dependencies: ["Vapor", ..., "LeafErrorMiddleware"]),
     // ...
 ]
 ```
@@ -59,8 +52,8 @@ Leaf Error Middleware allows you to pass a closure to `LeafErrorMiddleware` to g
 Register the middleware as follows:
 
 ```swift
-let leafMiddleware = LeafErrorMiddleware() { status, error, req -> SomeContext in
-    SomeContext()
+let leafMiddleware = LeafErrorMiddleware() { status, error, req -> EventLoopFuture<SomeContext> in
+    return req.eventLoop.future(SomeContext())
 }
 app.middleware.use(leafMiddleware)
 ```
