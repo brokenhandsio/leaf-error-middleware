@@ -27,7 +27,7 @@ First, add LeafErrorMiddleware as a dependency in your `Package.swift` file:
 ```swift
 dependencies: [
     // ...,
-    .package(name: "LeafErrorMiddleware", url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "3.0.0")
+    .package(url: "https://github.com/brokenhandsio/leaf-error-middleware.git", from: "4.0.0")
 ],
 targets: [
     .target(
