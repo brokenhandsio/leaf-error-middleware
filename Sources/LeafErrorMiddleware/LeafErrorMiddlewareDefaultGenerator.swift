@@ -15,4 +15,8 @@ public enum LeafErrorMiddlewareDefaultGenerator {
     public static func build() -> LeafErrorMiddleware<DefaultContext> {
         LeafErrorMiddleware(contextGenerator: generate)
     }
+    
+    public static func build(errorMappings: [HTTPStatus: String]) -> LeafErrorMiddleware<DefaultContext> {
+        LeafErrorMiddleware(errorMappings: errorMappings, contextGenerator: generate)
+    }
 }
