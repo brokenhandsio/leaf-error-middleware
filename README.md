@@ -3,7 +3,7 @@
     <br>
     <br>
     <a href="https://swift.org">
-        <img src="http://img.shields.io/badge/Swift-5.2-brightgreen.svg" alt="Language">
+        <img src="http://img.shields.io/badge/Swift-5.6-brightgreen.svg" alt="Language">
     </a>
     <a href="https://github.com/brokenhandsio/leaf-error-middleware/actions">
         <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=main" alt="Build Status">
