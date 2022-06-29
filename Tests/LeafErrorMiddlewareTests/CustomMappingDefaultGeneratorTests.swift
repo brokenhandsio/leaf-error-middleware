@@ -94,7 +94,7 @@ class CustomMappingDefaultGeneratorTests: XCTestCase {
         XCTAssertEqual(viewRenderer.leafPath, "serverError")
     }
 
-    func testThatUnauthorisedIsPassedThroughToServerErrorPage() throws {
+    func testThatUnauthorisedIsPassedThroughToCustomPage() throws {
         let response = try app.getResponse(to: "/unauthorized")
         XCTAssertEqual(response.status, .unauthorized)
         XCTAssertEqual(viewRenderer.leafPath, "401")

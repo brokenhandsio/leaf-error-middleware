@@ -110,15 +110,22 @@ class CustomMappingCustomGeneratorTests: XCTestCase {
         XCTAssertTrue(context.trigger)
     }
 
-    func testContextGeneratedOn500Page() throws {
+    func testContextGeneratedOn401Page() throws {
         let response = try app.getResponse(to: "/unauthorized")
         XCTAssertEqual(response.status, .unauthorized)
         XCTAssertEqual(viewRenderer.leafPath, "401")
         let context = try XCTUnwrap(viewRenderer.capturedContext as? AContext)
         XCTAssertTrue(context.trigger)
     }
+    func testContextGeneratedOn500Page() throws {
+        let response = try app.getResponse(to: "/serverError")
+        XCTAssertEqual(response.status, .internalServerError)
+        XCTAssertEqual(viewRenderer.leafPath, "serverError")
+        let context = try XCTUnwrap(viewRenderer.capturedContext as? AContext)
+        XCTAssertTrue(context.trigger)
+    }
 
-    func testGetAResponseWhenGenerator() throws {
+    func testGetAResponseWhenGeneratorThrows() throws {
         app.shutdown()
         app = Application(.testing, .shared(eventLoopGroup))
         app.views.use { _ in
