@@ -3,9 +3,13 @@ import Vapor
 /// Captures all errors and transforms them into an internal server error.
 public final class LeafErrorMiddleware<T: Encodable>: AsyncMiddleware {
     let contextGenerator: (HTTPStatus, Error, Request) async throws -> T
-
-    public init(contextGenerator: @escaping ((HTTPStatus, Error, Request) async throws -> T)) {
+    let errorMappings: [HTTPStatus: String]
+    
+    /// Accepts an optional mapping of error statuses to template names for more granular error page templates
+    public init(errorMappings: [HTTPStatus: String] = [.notFound: "404"],
+                contextGenerator: @escaping ((HTTPStatus, Error, Request) async throws -> T)) {
         self.contextGenerator = contextGenerator
+        self.errorMappings = errorMappings
     }
 
     /// See `Middleware.respond`
@@ -38,10 +42,10 @@ public final class LeafErrorMiddleware<T: Encodable>: AsyncMiddleware {
     }
 
     private func handleError(for request: Request, status: HTTPStatus, error: Error) async throws -> Response {
-        if status == .notFound {
+        if let viewMapping = errorMappings[status] {
             do {
                 let context = try await contextGenerator(status, error, request)
-                let res = try await request.view.render("404", context).encodeResponse(for: request).get()
+                let res = try await request.view.render(viewMapping, context).encodeResponse(for: request).get()
                 res.status = status
                 return res
             } catch {

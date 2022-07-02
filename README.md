@@ -3,7 +3,7 @@
     <br>
     <br>
     <a href="https://swift.org">
-        <img src="http://img.shields.io/badge/Swift-5.2-brightgreen.svg" alt="Language">
+        <img src="http://img.shields.io/badge/Swift-5.6-brightgreen.svg" alt="Language">
     </a>
     <a href="https://github.com/brokenhandsio/leaf-error-middleware/actions">
         <img src="https://github.com/brokenhandsio/leaf-error-middleware/workflows/CI/badge.svg?branch=main" alt="Build Status">
@@ -71,14 +71,31 @@ The closure receives three parameters:
 * `Error` - the error caught to be handled.
 * `Request` - the request currently being handled. This can be used to log information, make external API calls or check the session.
 
-# Setting Up
+## Custom Mappings
 
-You need to include two [Leaf](https://github.com/vapor/leaf) templates in your application:
+By default, you need to include two [Leaf](https://github.com/vapor/leaf) templates in your application:
 
 * `404.leaf`
 * `serverError.leaf`
 
-When Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. Any other error caught will return the `serverError.leaf` template. 
+However, you may elect to provide a dictionary mapping arbitrary error responses (i.e >= 400) to custom template names, like so:
+
+```swift
+let mappings: [HTTPStatus: String] = [
+    .notFound: "404",
+    .unauthorized: "401",
+    .forbidden: "403"
+]
+let leafMiddleware = LeafErrorMiddleware(errorMappings: mappings) { status, error, req async throws -> SomeContext in
+    SomeContext()
+}
+
+app.middleware.use(leafMiddleware)
+// OR
+app.middleware.use(LeafErrorMiddlewareDefaultGenerator.build(errorMappings: mapping))
+```
+
+By default, when Leaf Error Middleware catches a 404 error, it will return the `404.leaf` template. This particular mapping also allows returning a `401.leaf` or `403.leaf` template based on the error. Any other error caught will return the `serverError.leaf` template. By providing a mapping, you override the default 404 template and will need to respecify it if you want to use it.
 
 ## Default Context
 
@@ -88,4 +105,4 @@ If using the default context, the `serverError.leaf` template will be passed up 
 * `statusMessage` - a reason for the status code
 * `reason` - the reason for the error, if known. Otherwise this won't be passed in.
 
-The `404.leaf` template will get a `reason` parameter in the context if one is known.
+The `404.leaf` template and any other custom error templates will get a `reason` parameter in the context if one is known.

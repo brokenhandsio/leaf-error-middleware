@@ -12,7 +12,12 @@ public enum LeafErrorMiddlewareDefaultGenerator {
         return context
     }
 
-    public static func build() -> LeafErrorMiddleware<DefaultContext> {
-        LeafErrorMiddleware(contextGenerator: generate)
+    public static func build(errorMappings: [HTTPStatus: String]? = nil) -> LeafErrorMiddleware<DefaultContext> {
+        if let errorMappings = errorMappings {
+            return LeafErrorMiddleware(errorMappings: errorMappings, contextGenerator: generate)
+        }
+        else {
+            return LeafErrorMiddleware(contextGenerator: generate)
+        }
     }
 }
